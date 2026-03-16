@@ -1,258 +1,427 @@
+"use client";
+
+import { FormEvent, useMemo, useState } from "react";
 import styles from "./page.module.css";
 
-const frictionMap = [
+type Role = "产品" | "设计" | "前端" | "AI/后端" | "运营增长" | "内容";
+
+type IdeaForm = {
+  projectName: string;
+  idea: string;
+  targetUser: string;
+  coreProblem: string;
+  differentiation: string;
+  firstWeekGoal: string;
+  neededRoles: Role[];
+};
+
+type RecommendedPerson = {
+  name: string;
+  role: Role;
+  strength: string;
+};
+
+type LaunchPlan = {
+  summary: string;
+  positioning: string;
+  firstActions: string[];
+  publishCopy: string;
+  recommendations: RecommendedPerson[];
+  completion: number;
+};
+
+type FeedProject = {
+  id: number;
+  name: string;
+  summary: string;
+  stage: string;
+  roles: Role[];
+  owner: string;
+  createdAt: string;
+};
+
+const roleOptions: Role[] = ["产品", "设计", "前端", "AI/后端", "运营增长", "内容"];
+
+const collaboratorPool: Record<Role, RecommendedPerson[]> = {
+  产品: [
+    { name: "Lena", role: "产品", strength: "擅长从 0 到 1 梳理问题与优先级" },
+    { name: "Rei", role: "产品", strength: "用户访谈和需求抽象速度快" },
+  ],
+  设计: [
+    { name: "Momo", role: "设计", strength: "能把复杂流程变成可用界面" },
+    { name: "Ian", role: "设计", strength: "品牌气质和视觉系统搭建强" },
+  ],
+  前端: [
+    { name: "Kai", role: "前端", strength: "高反馈速度原型与交互实现" },
+    { name: "Nora", role: "前端", strength: "擅长 Next.js 与性能优化" },
+  ],
+  "AI/后端": [
+    { name: "Zed", role: "AI/后端", strength: "结构化生成流程与数据建模" },
+    { name: "Vivi", role: "AI/后端", strength: "RAG 与 API 编排落地经验" },
+  ],
+  "运营增长": [
+    { name: "Pia", role: "运营增长", strength: "冷启动社群和种子用户增长" },
+    { name: "Bo", role: "运营增长", strength: "活动运营和转化漏斗设计" },
+  ],
+  内容: [
+    { name: "Arlo", role: "内容", strength: "擅长把产品价值讲清楚" },
+    { name: "Jin", role: "内容", strength: "社媒内容节奏和选题敏感" },
+  ],
+};
+
+const defaultForm: IdeaForm = {
+  projectName: "",
+  idea: "",
+  targetUser: "",
+  coreProblem: "",
+  differentiation: "",
+  firstWeekGoal: "",
+  neededRoles: ["产品", "前端"],
+};
+
+const seedProjects: FeedProject[] = [
   {
-    title: "想法模糊",
-    pain: "知道自己想做点什么，但讲不清要解决谁的问题。",
-    igniteFix: "通过连续提问，把模糊冲动整理成可复述的项目定义。",
+    id: 1,
+    name: "Campus Buddy",
+    summary: "帮助大学生基于目标快速找到学习/项目搭子。",
+    stage: "招募中",
+    roles: ["前端", "内容"],
+    owner: "Aiden",
+    createdAt: "今天",
   },
   {
-    title: "第一步卡住",
-    pain: "不知道该先做页面、访谈、demo 还是先找人。",
-    igniteFix: "给出前 3-5 个关键动作，避免陷入无限准备。",
-  },
-  {
-    title: "找不到搭子",
-    pain: "知道缺设计/开发/运营，但没有高效连接入口。",
-    igniteFix: "围绕项目意图推荐角色，不做纯外包交易。",
-  },
-  {
-    title: "热情流失",
-    pain: "没有结构和行动切口，拖延会在一周内吞掉动力。",
-    igniteFix: "把“我想做”变成“我今天就能做”的可执行清单。",
+    id: 2,
+    name: "Indie Sprint Board",
+    summary: "给 side project 发起人提供 7 天启动看板。",
+    stage: "验证中",
+    roles: ["设计", "运营增长"],
+    owner: "Mia",
+    createdAt: "昨天",
   },
 ];
 
-const capabilities = [
-  {
-    title: "想法结构化",
-    detail:
-      "自然语言输入后，AI 追问用户、问题、差异点、第一步，输出标准化项目摘要。",
-  },
-  {
-    title: "雏形生成",
-    detail:
-      "自动产出项目文档、Landing 文案、模块清单和阶段路线图，让人不再从空白页开始。",
-  },
-  {
-    title: "协作匹配",
-    detail:
-      "根据项目需求推荐互补角色，把“我在启动什么、我需要谁”表达清楚并快速连接。",
-  },
-  {
-    title: "行动推进",
-    detail:
-      "将复杂项目拆解为前 3-5 个动作，降低拖延概率，推动真实启动。",
-  },
-];
+function buildPlan(form: IdeaForm): LaunchPlan {
+  const filledFields = [
+    form.projectName,
+    form.idea,
+    form.targetUser,
+    form.coreProblem,
+    form.differentiation,
+    form.firstWeekGoal,
+  ].filter((item) => item.trim().length > 0).length;
 
-const roadmap = [
-  {
-    stage: "P0",
-    goal: "验证需求",
-    output: "Landing Page + 项目介绍 + 用户访谈",
-    signal: "用户愿意留邮箱 / 进 waitlist",
-  },
-  {
-    stage: "P1",
-    goal: "可用原型",
-    output: "输入想法 -> 输出摘要与下一步",
-    signal: "用户愿意反复试用",
-  },
-  {
-    stage: "P2",
-    goal: "协作匹配",
-    output: "项目发布页 + 角色需求页 + 搭子连接",
-    signal: "出现真实连接与合作",
-  },
-  {
-    stage: "P3",
-    goal: "社区循环",
-    output: "项目动态、展示页、更新 feed",
-    signal: "用户自然分享项目",
-  },
-];
+  const completion = Math.round((filledFields / 6) * 100);
 
-const roles = [
-  "产品/创始人：负责方向、用户理解与对外沟通",
-  "设计/前端：负责信息架构、品牌感与 web 原型",
-  "AI/全栈执行：负责结构化流程、生成逻辑与数据层",
-  "增长/社区：负责种子用户、分发策略与反馈闭环",
-];
+  const summary = `${form.projectName || "未命名项目"}：${form.idea || "一个待定义的创意"}`;
+  const positioning = `${form.targetUser || "目标用户"} 在 ${
+    form.coreProblem || "某个关键问题"
+  } 上存在明显痛点，我们用 ${form.differentiation || "更快可执行的方案"} 来完成第一版验证。`;
 
-const risks = [
-  {
-    risk: "概念听起来好，但不一定持续使用",
-    action: "先打磨最强单点价值：帮用户开始。",
-  },
-  {
-    risk: "产品容易做重，滑向项目管理工具",
-    action: "前期只聚焦启动场景，不做全功能管理。",
-  },
-  {
-    risk: "匹配功能冷启动难",
-    action: "先从项目展示 + 人工精选连接切入。",
-  },
-  {
-    risk: "AI 输出同质化",
-    action: "强化引导流程、模板深度与场景化策略。",
-  },
-];
+  const firstActions = [
+    `今天：写出一句价值主张并发布到朋友圈/社群，收集 5 条真实反馈。`,
+    `48 小时内：做一个最小落地页，核心只讲“为谁解决什么问题”。`,
+    `7 天内：完成“${form.firstWeekGoal || "获取 10 位目标用户反馈"}”并复盘。`,
+  ];
+
+  const publishCopy = `我正在启动「${form.projectName || "这个项目"}」，需要 ${
+    form.neededRoles.join(" / ") || "协作者"
+  } 一起把第一版做出来。`;
+
+  const recommendations = (form.neededRoles.length ? form.neededRoles : roleOptions)
+    .flatMap((role) => collaboratorPool[role].slice(0, 1))
+    .slice(0, 4);
+
+  return {
+    summary,
+    positioning,
+    firstActions,
+    publishCopy,
+    recommendations,
+    completion,
+  };
+}
 
 export default function Home() {
+  const [form, setForm] = useState<IdeaForm>(defaultForm);
+  const [plan, setPlan] = useState<LaunchPlan | null>(null);
+  const [taskDone, setTaskDone] = useState<boolean[]>([]);
+  const [feed, setFeed] = useState<FeedProject[]>(seedProjects);
+
+  const progress = useMemo(() => {
+    if (!taskDone.length) {
+      return 0;
+    }
+
+    const finished = taskDone.filter(Boolean).length;
+    return Math.round((finished / taskDone.length) * 100);
+  }, [taskDone]);
+
+  const onGenerate = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const generated = buildPlan(form);
+    setPlan(generated);
+    setTaskDone(generated.firstActions.map(() => false));
+  };
+
+  const onPublish = () => {
+    if (!plan) {
+      return;
+    }
+
+    const newProject: FeedProject = {
+      id: Date.now(),
+      name: form.projectName || "未命名项目",
+      summary: form.idea || "一个正在启动的项目",
+      stage: "刚发布",
+      roles: form.neededRoles,
+      owner: "你",
+      createdAt: new Date().toLocaleDateString("zh-CN"),
+    };
+
+    setFeed((current) => [newProject, ...current]);
+  };
+
+  const toggleRole = (role: Role) => {
+    setForm((current) => {
+      const exists = current.neededRoles.includes(role);
+      if (exists) {
+        return {
+          ...current,
+          neededRoles: current.neededRoles.filter((item) => item !== role),
+        };
+      }
+
+      return {
+        ...current,
+        neededRoles: [...current.neededRoles, role],
+      };
+    });
+  };
+
   return (
     <div className={styles.page}>
       <header className={styles.topBar}>
-        <p className={styles.brand}>IGNIT</p>
-        <nav className={styles.nav}>
-          <a href="#studio">AI 启动台</a>
-          <a href="#roadmap">产品路线</a>
-          <a href="#join">加入我们</a>
-        </nav>
+        <div>
+          <p className={styles.brand}>IGNIT PRODUCT LAB</p>
+          <h1>点火你的项目，不是浏览官网</h1>
+        </div>
+        <div className={styles.topStats}>
+          <div>
+            <strong>{feed.length}</strong>
+            <span>项目流</span>
+          </div>
+          <div>
+            <strong>{plan ? `${plan.completion}%` : "0%"}</strong>
+            <span>想法清晰度</span>
+          </div>
+          <div>
+            <strong>{progress}%</strong>
+            <span>行动进度</span>
+          </div>
+        </div>
       </header>
 
       <main className={styles.main}>
-        <section className={styles.hero}>
-          <div>
-            <p className={styles.kicker}>Human-first, AI-assisted</p>
-            <h1>把“我想做”点燃成“我已经开始做了”。</h1>
-            <p className={styles.heroText}>
-              Ignit 把项目最难的启动时刻拆开处理：先说清想法，再生成雏形，再找到人一起做。不是管理已经存在的项目，而是让项目真的开始。
-            </p>
-            <div className={styles.heroActions}>
-              <a href="#studio" className={styles.primaryAction}>
-                进入点火流程
-              </a>
-              <a href="#roadmap" className={styles.secondaryAction}>
-                看 P0-P3 路线
-              </a>
+        <section className={styles.workspace}>
+          <form className={styles.panel} onSubmit={onGenerate}>
+            <div className={styles.sectionHead}>
+              <h2>1) 输入你的想法</h2>
+              <p>先把模糊想法变成结构化信息。</p>
             </div>
-          </div>
 
-          <aside className={styles.heroPanel}>
-            <p className={styles.panelTitle}>Ignition Signal</p>
-            <ul>
-              <li>
-                <strong>Stage Focus</strong>
-                <span>项目启动前 72 小时</span>
-              </li>
-              <li>
-                <strong>Core Outcome</strong>
-                <span>第一版可行动成果</span>
-              </li>
-              <li>
-                <strong>North Star</strong>
-                <span>从模糊念头到首个公开动作</span>
-              </li>
-            </ul>
-          </aside>
+            <label>
+              项目名
+              <input
+                value={form.projectName}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, projectName: event.target.value }))
+                }
+                placeholder="例如：Campus Buddy"
+              />
+            </label>
+
+            <label>
+              你想做什么
+              <textarea
+                value={form.idea}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, idea: event.target.value }))
+                }
+                placeholder="一句话描述你的想法"
+              />
+            </label>
+
+            <div className={styles.twoCol}>
+              <label>
+                目标用户
+                <input
+                  value={form.targetUser}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, targetUser: event.target.value }))
+                  }
+                  placeholder="例如：大二到研一学生"
+                />
+              </label>
+              <label>
+                核心问题
+                <input
+                  value={form.coreProblem}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, coreProblem: event.target.value }))
+                  }
+                  placeholder="例如：找不到同频执行搭子"
+                />
+              </label>
+            </div>
+
+            <label>
+              差异点
+              <input
+                value={form.differentiation}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, differentiation: event.target.value }))
+                }
+                placeholder="例如：72 小时内给出可执行结果"
+              />
+            </label>
+
+            <label>
+              第一周目标
+              <input
+                value={form.firstWeekGoal}
+                onChange={(event) =>
+                  setForm((current) => ({ ...current, firstWeekGoal: event.target.value }))
+                }
+                placeholder="例如：完成 10 个访谈 + 上线 waitlist"
+              />
+            </label>
+
+            <fieldset>
+              <legend>你需要的角色</legend>
+              <div className={styles.roleGrid}>
+                {roleOptions.map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => toggleRole(role)}
+                    className={
+                      form.neededRoles.includes(role) ? styles.roleButtonActive : styles.roleButton
+                    }
+                  >
+                    {role}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
+            <button className={styles.primaryCta} type="submit">
+              2) 生成启动方案
+            </button>
+          </form>
+
+          <section className={styles.panel}>
+            <div className={styles.sectionHead}>
+              <h2>2) 结构化输出</h2>
+              <p>这块就是产品核心，不是展示文案。</p>
+            </div>
+
+            {plan ? (
+              <>
+                <article className={styles.outputCard}>
+                  <h3>项目摘要</h3>
+                  <p>{plan.summary}</p>
+                </article>
+
+                <article className={styles.outputCard}>
+                  <h3>项目定位</h3>
+                  <p>{plan.positioning}</p>
+                </article>
+
+                <article className={styles.outputCard}>
+                  <h3>对外招募文案</h3>
+                  <p>{plan.publishCopy}</p>
+                </article>
+
+                <button className={styles.secondaryCta} type="button" onClick={onPublish}>
+                  发布到项目流
+                </button>
+              </>
+            ) : (
+              <p className={styles.emptyState}>填写左侧信息后点击“生成启动方案”，这里会出现可执行输出。</p>
+            )}
+          </section>
         </section>
 
-        <section className={styles.block}>
-          <div className={styles.blockHead}>
-            <h2>启动阻力地图</h2>
-            <p>Ignit 不做笼统“效率工具”，只砍掉最容易让想法死掉的四类摩擦。</p>
-          </div>
-          <div className={styles.frictionGrid}>
-            {frictionMap.map((item) => (
-              <article key={item.title} className={styles.card}>
-                <h3>{item.title}</h3>
-                <p>{item.pain}</p>
-                <small>Ignit 解法：{item.igniteFix}</small>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className={styles.block} id="studio">
-          <div className={styles.blockHead}>
-            <h2>AI 启动台（示意）</h2>
-            <p>不是聊天结束，而是结构化结果开始。</p>
-          </div>
-          <div className={styles.console}>
-            <article className={styles.consoleCard}>
-              <p className={styles.consoleTitle}>01 原始输入</p>
-              <p className={styles.consoleText}>“我想做一个给大学生找搭子的社交平台。”</p>
-            </article>
-
-            <article className={styles.consoleCard}>
-              <p className={styles.consoleTitle}>02 Ignit 追问</p>
-              <ul className={styles.list}>
-                <li>主要服务哪类大学生？大一新生还是实习党？</li>
-                <li>当前他们最难的是找学习搭子还是副业搭子？</li>
-                <li>你和现有平台相比最大的差异点是什么？</li>
-                <li>第一周最小验证动作是什么？</li>
+        <section className={styles.lowerGrid}>
+          <section className={styles.panel}>
+            <div className={styles.sectionHead}>
+              <h2>3) 行动推进</h2>
+              <p>把复杂启动压缩成今天就能做的动作。</p>
+            </div>
+            {plan ? (
+              <ul className={styles.todoList}>
+                {plan.firstActions.map((task, index) => (
+                  <li key={task}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={taskDone[index] ?? false}
+                        onChange={() =>
+                          setTaskDone((current) =>
+                            current.map((item, itemIndex) =>
+                              itemIndex === index ? !item : item,
+                            ),
+                          )
+                        }
+                      />
+                      <span>{task}</span>
+                    </label>
+                  </li>
+                ))}
               </ul>
-            </article>
+            ) : (
+              <p className={styles.emptyState}>生成方案后会自动出现前三步行动。</p>
+            )}
+          </section>
 
-            <article className={styles.consoleCard}>
-              <p className={styles.consoleTitle}>03 结构化输出</p>
-              <ul className={styles.list}>
-                <li>项目定位：校园内可信协作连接平台</li>
-                <li>核心用户：大二-研一有执行目标的学生</li>
-                <li>核心问题：无法快速找到同频执行搭子</li>
-                <li>第一步：上线 waitlist 页并访谈 10 位用户</li>
-              </ul>
-            </article>
-          </div>
+          <section className={styles.panel}>
+            <div className={styles.sectionHead}>
+              <h2>4) 协作推荐</h2>
+              <p>按你选择的角色给出首批可连接对象。</p>
+            </div>
+            {plan ? (
+              <div className={styles.peopleGrid}>
+                {plan.recommendations.map((person) => (
+                  <article key={`${person.name}-${person.role}`} className={styles.personCard}>
+                    <h3>{person.name}</h3>
+                    <span>{person.role}</span>
+                    <p>{person.strength}</p>
+                    <button type="button">邀请沟通</button>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className={styles.emptyState}>先生成方案，再显示推荐协作者。</p>
+            )}
+          </section>
         </section>
 
-        <section className={styles.block}>
-          <div className={styles.blockHead}>
-            <h2>核心能力栈</h2>
-            <p>每个能力都服务“启动成功率”，而不是功能堆砌。</p>
+        <section className={styles.panel}>
+          <div className={styles.sectionHead}>
+            <h2>项目流（实时原型）</h2>
+            <p>你发布的项目会立刻出现在这里，模拟社区冷启动。</p>
           </div>
-          <div className={styles.capabilityGrid}>
-            {capabilities.map((item) => (
-              <article key={item.title} className={styles.card}>
-                <h3>{item.title}</h3>
-                <p>{item.detail}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className={styles.block} id="roadmap">
-          <div className={styles.blockHead}>
-            <h2>第一阶段产品路线</h2>
-            <p>从验证需求到社区循环，逐步扩而不是一次做满。</p>
-          </div>
-          <div className={styles.roadmapGrid}>
-            {roadmap.map((item) => (
-              <article key={item.stage} className={styles.phaseCard}>
-                <p className={styles.phase}>{item.stage}</p>
-                <h3>{item.goal}</h3>
-                <p>{item.output}</p>
-                <small>成功信号：{item.signal}</small>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className={styles.block} id="join">
-          <div className={styles.blockHead}>
-            <h2>正在寻找的共创角色</h2>
-            <p>如果你也对“启动阻力”有共鸣，我们一起把它做成产品。</p>
-          </div>
-          <div className={styles.joinPanel}>
-            <ul className={styles.list}>
-              {roles.map((role) => (
-                <li key={role}>{role}</li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        <section className={styles.block}>
-          <div className={styles.blockHead}>
-            <h2>当前风险与应对</h2>
-            <p>有风险没问题，关键是提前定义策略。</p>
-          </div>
-          <div className={styles.riskGrid}>
-            {risks.map((item) => (
-              <article key={item.risk} className={styles.riskCard}>
-                <p>{item.risk}</p>
-                <small>{item.action}</small>
+          <div className={styles.feedGrid}>
+            {feed.map((project) => (
+              <article key={project.id} className={styles.feedCard}>
+                <div className={styles.feedMeta}>
+                  <h3>{project.name}</h3>
+                  <span>{project.stage}</span>
+                </div>
+                <p>{project.summary}</p>
+                <small>
+                  需要角色：{project.roles.join(" / ")} · 发起人：{project.owner} · {project.createdAt}
+                </small>
               </article>
             ))}
           </div>
