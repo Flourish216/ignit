@@ -5,10 +5,11 @@ import { usePathname } from "next/navigation";
 import styles from "./workspace-shell.module.css";
 
 const navItems = [
-  { href: "/", label: "总览" },
+  { href: "/", label: "开始" },
+  { href: "/projects", label: "发现项目" },
   { href: "/launch", label: "发起项目" },
-  { href: "/projects", label: "项目流" },
-  { href: "/matches", label: "找人" },
+  { href: "/matches", label: "协作者" },
+  { href: "/my", label: "我的项目" },
 ];
 
 export function WorkspaceShell({ children }: { children: React.ReactNode }) {
@@ -19,7 +20,7 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       <aside className={styles.sidebar}>
         <div>
           <p className={styles.brand}>IGNIT</p>
-          <p className={styles.caption}>Project-first social app</p>
+          <p className={styles.caption}>让项目更快开始的社交平台</p>
         </div>
 
         <nav className={styles.nav}>
@@ -34,8 +35,8 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className={styles.tip}>
-          <strong>一句话就开始</strong>
-          <p>先在“发起项目”输入自然语言，AI 会给你第一版策略与招募建议。</p>
+          <strong>先发起，再连接</strong>
+          <p>在“发起项目”输入一句自然语言，AI 会帮你整理方向并推荐协作者。</p>
         </div>
       </aside>
 

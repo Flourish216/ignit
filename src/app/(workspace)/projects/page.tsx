@@ -70,8 +70,8 @@ export default function ProjectsPage() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <h1 className={styles.title}>项目流</h1>
-        <p className={styles.subtitle}>这里是 Ignit 的核心社交流：每条内容都是“项目帖”。</p>
+        <h1 className={styles.title}>发现项目</h1>
+        <p className={styles.subtitle}>这里是 Ignit 的社区流：每条内容都是“项目帖”，用于连接协作。</p>
       </header>
 
       <section className={styles.grid2}>

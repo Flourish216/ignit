@@ -25,9 +25,9 @@ body {
 body {
   color: var(--ink);
   background:
-    radial-gradient(circle at 8% 18%, rgba(233, 73, 47, 0.22), transparent 34%),
-    radial-gradient(circle at 92% 5%, rgba(15, 143, 133, 0.18), transparent 28%),
-    linear-gradient(130deg, #f9f4eb 0%, #f3ede0 48%, #efe7d7 100%);
+    radial-gradient(circle at 8% 18%, rgba(233, 73, 47, 0.13), transparent 36%),
+    radial-gradient(circle at 92% 5%, rgba(15, 143, 133, 0.1), transparent 32%),
+    linear-gradient(130deg, #faf7ef 0%, #f5efe2 48%, #f1e9dc 100%);
   font-family: var(--font-body), sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -39,11 +39,10 @@ body::before {
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background-image:
-    linear-gradient(rgba(19, 34, 58, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(19, 34, 58, 0.05) 1px, transparent 1px);
-  background-size: 36px 36px;
-  mask-image: radial-gradient(circle at 50% 20%, black 20%, transparent 78%);
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.6), transparent 28%),
+    radial-gradient(circle at 80% 90%, rgba(255, 255, 255, 0.45), transparent 30%);
+  opacity: 0.55;
 }
 
 a {

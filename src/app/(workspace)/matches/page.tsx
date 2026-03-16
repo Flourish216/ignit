@@ -41,7 +41,7 @@ export default function MatchesPage() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <h1 className={styles.title}>找人</h1>
+        <h1 className={styles.title}>协作者</h1>
         <p className={styles.subtitle}>AI 根据你的项目意图推荐可连接的人，而不是泛泛“找外包”。</p>
       </header>
 

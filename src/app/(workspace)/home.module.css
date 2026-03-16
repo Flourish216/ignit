@@ -1,0 +1,199 @@
+.page {
+  display: grid;
+  gap: 0.95rem;
+}
+
+.topBar {
+  border: 1px solid rgba(19, 34, 58, 0.16);
+  border-radius: 16px;
+  background: rgba(255, 252, 247, 0.86);
+  padding: 0.88rem;
+}
+
+.brand {
+  font-family: var(--font-display), sans-serif;
+  letter-spacing: 0.2em;
+  font-size: 0.86rem;
+  color: #862f22;
+}
+
+.definition {
+  margin-top: 0.3rem;
+  color: var(--muted);
+}
+
+.hero {
+  border: 1px solid rgba(19, 34, 58, 0.2);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 90% 2%, rgba(15, 143, 133, 0.2), transparent 30%),
+    radial-gradient(circle at 5% 10%, rgba(233, 73, 47, 0.2), transparent 36%),
+    rgba(255, 250, 242, 0.92);
+  box-shadow: 0 22px 55px rgba(16, 29, 52, 0.12);
+  padding: clamp(1rem, 2.8vw, 1.65rem);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.hero h1 {
+  font-family: var(--font-display), sans-serif;
+  font-size: clamp(1.55rem, 3.8vw, 2.7rem);
+  line-height: 1.05;
+}
+
+.hero textarea {
+  min-height: 140px;
+  border: 1px solid rgba(19, 34, 58, 0.2);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 0.78rem;
+  font: inherit;
+  resize: vertical;
+}
+
+.hero textarea:focus {
+  outline: 2px solid rgba(233, 73, 47, 0.24);
+  border-color: #e9492f;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.62rem;
+}
+
+.heroActions button,
+.heroActions a {
+  border: 0;
+  border-radius: 10px;
+  padding: 0.58rem 0.82rem;
+  font: inherit;
+  font-weight: 800;
+}
+
+.heroActions button {
+  color: #fff;
+  background: linear-gradient(145deg, #ef4f33, #cb341d);
+  cursor: pointer;
+}
+
+.heroActions a {
+  color: #13223a;
+  background: rgba(19, 34, 58, 0.12);
+}
+
+.ghostAction {
+  background: rgba(15, 143, 133, 0.2) !important;
+  color: #0a5f58 !important;
+}
+
+.aiSection,
+.flowSection,
+.mineSection {
+  border: 1px solid rgba(19, 34, 58, 0.15);
+  border-radius: 18px;
+  background: rgba(255, 251, 244, 0.84);
+  padding: 0.85rem;
+  display: grid;
+  gap: 0.7rem;
+}
+
+.sectionHead h2 {
+  font-family: var(--font-display), sans-serif;
+  font-size: 1.18rem;
+}
+
+.sectionHead p {
+  margin-top: 0.25rem;
+  color: var(--muted);
+}
+
+.aiGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.62rem;
+}
+
+.aiCard {
+  border: 1px solid rgba(19, 34, 58, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 0.66rem;
+  display: grid;
+  gap: 0.28rem;
+}
+
+.aiCard h3 {
+  font-size: 0.92rem;
+  color: #29415f;
+}
+
+.aiCard p {
+  color: #1a304b;
+}
+
+.flowGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.column {
+  border: 1px solid rgba(19, 34, 58, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  padding: 0.62rem;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.column h3 {
+  font-size: 0.95rem;
+}
+
+.postList,
+.mineList {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.postCard,
+.mineCard {
+  border: 1px solid rgba(19, 34, 58, 0.13);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.84);
+  padding: 0.58rem;
+  display: grid;
+  gap: 0.24rem;
+}
+
+.postCard p,
+.mineCard p {
+  color: #213958;
+}
+
+.postCard small,
+.mineCard small,
+.empty {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+@media (max-width: 1020px) {
+  .aiGrid,
+  .flowGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .heroActions {
+    flex-direction: column;
+  }
+
+  .heroActions button,
+  .heroActions a {
+    width: 100%;
+    text-align: center;
+  }
+}
