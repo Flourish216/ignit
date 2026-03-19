@@ -5,28 +5,25 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Home, Compass, Plus, Users, LogOut, User, Sparkles } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
-
-const navItems = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/explore", label: "Explore", icon: Compass },
-  { href: "/teams", label: "Teams", icon: Users },
-]
+import { useLanguage } from "@/lib/i18n/context"
+import { LanguageSwitcher } from "@/components/language-switcher"
 
 export function Navigation() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const { t } = useLanguage()
+
+  const navItems = [
+    { href: "/", label: t.nav.home, icon: Home },
+    { href: "/explore", label: t.nav.explore, icon: Compass },
+    { href: "/teams", label: t.nav.teams, icon: Users },
+  ]
 
   const { data: user } = useSWR("user", async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -35,11 +32,7 @@ export function Navigation() {
 
   const { data: profile } = useSWR(user ? `profile-${user.id}` : null, async () => {
     if (!user) return null
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single()
+    const { data } = await supabase.from("profiles").select("*").eq("id", user.id).single()
     return data
   })
 
@@ -57,24 +50,14 @@ export function Navigation() {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
               <Sparkles className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-semibold text-foreground">Collab</span>
+            <span className="text-xl font-semibold text-foreground">Ignit</span>
           </Link>
-
           <nav className="hidden items-center gap-1 md:flex">
             {navItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    isActive
-                      ? "bg-secondary text-foreground"
-                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                  )}
-                >
+                <Link key={item.href} href={item.href} className={cn("flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors", isActive ? "bg-secondary text-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground")}>
                   <Icon className="h-4 w-4" />
                   {item.label}
                 </Link>
@@ -82,17 +65,13 @@ export function Navigation() {
             })}
           </nav>
         </div>
-
         <div className="flex items-center gap-3">
+          <LanguageSwitcher />
           {user ? (
             <>
               <Button asChild size="sm" className="hidden sm:flex">
-                <Link href="/create">
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Project
-                </Link>
+                <Link href="/create"><Plus className="mr-2 h-4 w-4" />{t.nav.newProject}</Link>
               </Button>
-
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-9 w-9 rounded-full">
@@ -119,21 +98,14 @@ export function Navigation() {
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/profile" className="cursor-pointer">
-                      <User className="mr-2 h-4 w-4" />
-                      Profile
-                    </Link>
+                    <Link href="/profile" className="cursor-pointer"><User className="mr-2 h-4 w-4" />{t.nav.profile}</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/teams" className="cursor-pointer">
-                      <Users className="mr-2 h-4 w-4" />
-                      My Teams
-                    </Link>
+                    <Link href="/teams" className="cursor-pointer"><Users className="mr-2 h-4 w-4" />{t.nav.myTeams}</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign Out
+                    <LogOut className="mr-2 h-4 w-4" />{t.nav.signOut}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -141,10 +113,10 @@ export function Navigation() {
           ) : (
             <div className="flex items-center gap-2">
               <Button variant="ghost" asChild size="sm">
-                <Link href="/auth/login">Sign In</Link>
+                <Link href="/auth/login">{t.nav.signIn}</Link>
               </Button>
               <Button asChild size="sm">
-                <Link href="/auth/sign-up">Get Started</Link>
+                <Link href="/auth/sign-up">{t.nav.getStarted}</Link>
               </Button>
             </div>
           )}

@@ -2,12 +2,13 @@ import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
+import { LanguageProvider } from '@/lib/i18n/context'
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Collab - Human-First, AI-Assisted Project Platform',
+  title: 'Ignit - Human-First, AI-Assisted Project Platform',
   description: 'Transform your ideas into reality. Describe your project, let AI break it down, and connect with the right people to build together.',
   generator: 'v0.app',
   icons: {
@@ -35,9 +36,11 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased">
-        {children}
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
         <Analytics />
       </body>
     </html>

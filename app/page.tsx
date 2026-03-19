@@ -1,77 +1,53 @@
+"use client"
+
 import { Navigation } from "@/components/navigation"
 import { IdeaInput } from "@/components/idea-input"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { ArrowRight, Users, Lightbulb, Zap, Target } from "lucide-react"
-
-const features = [
-  {
-    icon: Lightbulb,
-    title: "Share Your Idea",
-    description: "Describe your project in plain language. No technical details needed.",
-  },
-  {
-    icon: Zap,
-    title: "AI Breakdown",
-    description: "Our AI analyzes your idea and creates a structured project plan with required roles.",
-  },
-  {
-    icon: Users,
-    title: "Find Your Team",
-    description: "Connect with talented people who have the skills your project needs.",
-  },
-  {
-    icon: Target,
-    title: "Build Together",
-    description: "Collaborate in dedicated team spaces with tools designed for productivity.",
-  },
-]
+import { useLanguage } from "@/lib/i18n/context"
 
 export default function HomePage() {
+  const { t } = useLanguage()
+
+  const features = [
+    { icon: Lightbulb, title: t.features.shareIdea.title, description: t.features.shareIdea.description },
+    { icon: Zap, title: t.features.aiBreakdown.title, description: t.features.aiBreakdown.description },
+    { icon: Users, title: t.features.findTeam.title, description: t.features.findTeam.description },
+    { icon: Target, title: t.features.buildTogether.title, description: t.features.buildTogether.description },
+  ]
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-
       <main>
-        {/* Hero Section */}
         <section className="relative overflow-hidden px-4 pb-20 pt-16 sm:px-6 lg:px-8">
-          {/* Background gradient */}
           <div className="pointer-events-none absolute inset-0 -z-10">
             <div className="absolute left-1/2 top-0 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
           </div>
-
           <div className="mx-auto max-w-4xl text-center">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm">
               <span className="flex h-2 w-2 rounded-full bg-green-500" />
-              <span className="text-muted-foreground">Human-first, AI-assisted</span>
+              <span className="text-muted-foreground">{t.hero.badge}</span>
             </div>
-
             <h1 className="text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              Turn your ideas into{" "}
-              <span className="text-primary">collaborative projects</span>
+              {t.hero.title}{" "}
+              <span className="text-primary">{t.hero.titleHighlight}</span>
             </h1>
-
             <p className="mx-auto mt-6 max-w-2xl text-pretty text-lg text-muted-foreground">
-              Describe what you want to build. Our AI will help break it down into actionable tasks and 
-              connect you with the right people to make it happen.
+              {t.hero.description}
             </p>
-
             <div className="mt-10 flex justify-center">
               <IdeaInput />
             </div>
           </div>
         </section>
-
-        {/* Features Section */}
         <section className="border-t border-border bg-secondary/30 px-4 py-20 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
             <div className="text-center">
-              <h2 className="text-3xl font-bold text-foreground">How it works</h2>
-              <p className="mt-3 text-muted-foreground">
-                From idea to reality in four simple steps
-              </p>
+              <h2 className="text-3xl font-bold text-foreground">{t.features.title}</h2>
+              <p className="mt-3 text-muted-foreground">{t.features.subtitle}</p>
             </div>
-
             <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
               {features.map((feature, index) => {
                 const Icon = feature.icon
@@ -93,33 +69,24 @@ export default function HomePage() {
             </div>
           </div>
         </section>
-
-        {/* CTA Section */}
         <section className="px-4 py-20 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-4xl text-center">
-            <h2 className="text-3xl font-bold text-foreground">Ready to start building?</h2>
-            <p className="mt-3 text-muted-foreground">
-              Join thousands of creators turning their ideas into reality
-            </p>
+            <h2 className="text-3xl font-bold text-foreground">{t.cta.title}</h2>
+            <p className="mt-3 text-muted-foreground">{t.cta.subtitle}</p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Button asChild size="lg" className="gap-2">
-                <Link href="/explore">
-                  Explore Projects
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
+                <Link href="/explore">{t.cta.exploreProjects}<ArrowRight className="h-4 w-4" /></Link>
               </Button>
               <Button asChild variant="outline" size="lg">
-                <Link href="/auth/sign-up">Create Account</Link>
+                <Link href="/auth/sign-up">{t.cta.createAccount}</Link>
               </Button>
             </div>
           </div>
         </section>
       </main>
-
-      {/* Footer */}
       <footer className="border-t border-border px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl text-center text-sm text-muted-foreground">
-          <p>Built with collaboration in mind. Powered by AI.</p>
+          <p>{t.footer}</p>
         </div>
       </footer>
     </div>
