@@ -10,7 +10,6 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: 'Ignit - Human-First, AI-Assisted Project Platform',
   description: 'Transform your ideas into reality. Describe your project, let AI break it down, and connect with the right people to build together.',
-  generator: 'v0.app',
   icons: {
     icon: [
       {
