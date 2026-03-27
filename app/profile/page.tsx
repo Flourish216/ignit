@@ -47,6 +47,8 @@ export default function ProfilePage() {
     website: "",
     skills: [] as string[],
     interests: [] as string[],
+    current_goals: "",
+    availability: "",
   })
 
   const { data: user, isLoading: userLoading } = useSWR("user", async () => {
@@ -67,47 +69,94 @@ export default function ProfilePage() {
     }
   )
 
-  const { data: myProjects } = useSWR(
+  const { data: myProjectsRaw } = useSWR(
     user ? `my-projects-${user.id}` : null,
     async () => {
       if (!user) return []
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("projects")
-        .select(`
-          *,
-          owner:profiles!projects_owner_id_fkey(id, full_name, avatar_url)
-        `)
+        .select("*")
         .eq("owner_id", user.id)
         .order("created_at", { ascending: false })
+      
+      if (error) {
+        console.error("My projects fetch error:", error)
+        return []
+      }
       return data || []
     }
   )
 
-  const { data: joinedTeams } = useSWR(
+  // Add current user as owner to projects
+  const myProjects = myProjectsRaw?.map(project => ({
+    ...project,
+    owner: profile ? {
+      id: profile.id,
+      full_name: profile.full_name,
+      avatar_url: profile.avatar_url
+    } : null
+  }))
+
+  const { data: joinedTeamsRaw } = useSWR(
     user ? `joined-teams-${user.id}` : null,
     async () => {
       if (!user) return []
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("team_members")
         .select(`
           *,
           team:teams!team_members_team_id_fkey(
             id,
             name,
-            project:projects!teams_project_id_fkey(
-              id,
-              title,
-              description,
-              status,
-              owner:profiles!projects_owner_id_fkey(id, full_name, avatar_url)
-            )
+            project_id
           )
         `)
         .eq("user_id", user.id)
         .eq("status", "active")
+      
+      if (error) {
+        console.error("Joined teams fetch error:", error)
+        return []
+      }
       return data || []
     }
   )
+
+  // Fetch projects for joined teams separately
+  const { data: joinedProjects } = useSWR(
+    joinedTeamsRaw ? `joined-projects-${user.id}` : null,
+    async () => {
+      if (!joinedTeamsRaw || joinedTeamsRaw.length === 0) return {}
+      
+      const projectIds = [...new Set(joinedTeamsRaw.map((m: any) => m.team?.project_id).filter(Boolean))]
+      if (projectIds.length === 0) return {}
+      
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id, title, description, status, owner_id")
+        .in("id", projectIds)
+      
+      if (error) {
+        console.error("Joined projects fetch error:", error)
+        return {}
+      }
+      
+      const projectMap: Record<string, any> = {}
+      data?.forEach((p: any) => {
+        projectMap[p.id] = p
+      })
+      return projectMap
+    }
+  )
+
+  // Combine team membership with project data
+  const joinedTeams = joinedTeamsRaw?.map((membership: any) => ({
+    ...membership,
+    team: membership.team ? {
+      ...membership.team,
+      project: joinedProjects?.[membership.team.project_id] || null
+    } : null
+  }))
 
   const startEditing = () => {
     setEditForm({
@@ -117,6 +166,8 @@ export default function ProfilePage() {
       website: profile?.website || "",
       skills: profile?.skills || [],
       interests: profile?.interests || [],
+      current_goals: profile?.current_goals || "",
+      availability: profile?.availability || "",
     })
     setIsEditing(true)
   }
@@ -130,6 +181,8 @@ export default function ProfilePage() {
       website: "",
       skills: [],
       interests: [],
+      current_goals: "",
+      availability: "",
     })
   }
 
@@ -147,6 +200,8 @@ export default function ProfilePage() {
           website: editForm.website,
           skills: editForm.skills,
           interests: editForm.interests,
+          current_goals: editForm.current_goals,
+          availability: editForm.availability,
           updated_at: new Date().toISOString(),
         })
         .eq("id", user.id)
@@ -224,6 +279,29 @@ export default function ProfilePage() {
                         className="mt-1"
                       />
                     </div>
+                    <div>
+                      <label className="text-sm font-medium">What are you looking for?</label>
+                      <Input
+                        value={editForm.current_goals}
+                        onChange={(e) => setEditForm({ ...editForm, current_goals: e.target.value })}
+                        placeholder="e.g. Looking for a co-founder for a SaaS idea"
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Availability</label>
+                      <select
+                        value={editForm.availability}
+                        onChange={(e) => setEditForm({ ...editForm, availability: e.target.value })}
+                        className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Select availability</option>
+                        <option value="full-time">Full-time</option>
+                        <option value="part-time">Part-time (weekends)</option>
+                        <option value="few-hours">A few hours a week</option>
+                        <option value="exploring">Just exploring</option>
+                      </select>
+                    </div>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div>
                         <label className="text-sm font-medium">Location</label>
@@ -260,6 +338,24 @@ export default function ProfilePage() {
 
                     {profile?.bio && (
                       <p className="mt-4 text-foreground">{profile.bio}</p>
+                    )}
+
+                    {/* Current Goals & Availability */}
+                    {(profile?.current_goals || profile?.availability) && (
+                      <div className="mt-4 flex flex-wrap gap-3">
+                        {profile?.current_goals && (
+                          <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2 text-sm">
+                            <span className="text-xs font-medium text-primary block mb-0.5">Looking for</span>
+                            <span className="text-foreground">{profile.current_goals}</span>
+                          </div>
+                        )}
+                        {profile?.availability && (
+                          <div className="rounded-lg bg-secondary px-3 py-2 text-sm">
+                            <span className="text-xs font-medium text-muted-foreground block mb-0.5">Availability</span>
+                            <span className="text-foreground capitalize">{profile.availability.replace(/-/g, " ")}</span>
+                          </div>
+                        )}
+                      </div>
                     )}
 
                     <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">

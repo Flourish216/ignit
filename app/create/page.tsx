@@ -7,13 +7,21 @@ import { IdeaInput } from "@/components/idea-input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Sparkles, CheckCircle, Users, Target, AlertTriangle, ArrowRight, RefreshCw } from "lucide-react"
+import { Loader2, Sparkles, CheckCircle, Users, Target, AlertTriangle, ArrowRight, RefreshCw, Calendar } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import useSWR from "swr"
 
 interface ProjectBreakdown {
+  one_liner: string
   title: string
   description: string
+  problem: string
+  target_users: string
+  mvp: string[]
+  first_week: Array<{
+    day: string
+    goal: string
+  }>
   milestones: Array<{
     name: string
     description: string
@@ -41,7 +49,6 @@ function CreateProjectContent() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [streamingText, setStreamingText] = useState("")
 
   const { data: user } = useSWR("user", async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -62,7 +69,6 @@ function CreateProjectContent() {
 
     setIsAnalyzing(true)
     setError(null)
-    setStreamingText("")
     setBreakdown(null)
 
     try {
@@ -73,40 +79,15 @@ function CreateProjectContent() {
       })
 
       if (!response.ok) {
-        throw new Error("Failed to analyze idea")
+        const errorText = await response.text()
+        throw new Error(errorText || "Failed to analyze idea")
       }
 
-      const reader = response.body?.getReader()
-      const decoder = new TextDecoder()
-      let fullText = ""
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          
-          const chunk = decoder.decode(value)
-          const lines = chunk.split("\n")
-          
-          for (const line of lines) {
-            if (line.startsWith("0:")) {
-              try {
-                const text = JSON.parse(line.slice(2))
-                fullText += text
-                setStreamingText(fullText)
-              } catch {
-                // Skip non-JSON lines
-              }
-            }
-          }
-        }
-      }
-
-      // Parse the final JSON
-      const jsonMatch = fullText.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0])
-        setBreakdown(parsed)
+      const data = await response.json()
+      if (data.result) {
+        setBreakdown(data.result)
+      } else {
+        throw new Error("Invalid response format")
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong")
@@ -136,13 +117,25 @@ function CreateProjectContent() {
 
       if (error) throw error
 
-      // Create a team for this project
-      await supabase.from("teams").insert({
+      console.log("Project created successfully:", data.id)
+
+      // Create a team for this project (non-blocking)
+      const { error: teamError } = await supabase.from("teams").insert({
         project_id: data.id,
         name: `${breakdown.title} Team`,
       })
+      
+      if (teamError) {
+        console.error("Team creation error (non-blocking):", teamError)
+      }
 
-      router.push(`/project/${data.id}`)
+      // Ensure we have the project ID before navigating
+      if (data?.id) {
+        console.log("Navigating to project:", data.id)
+        router.push(`/project/${data.id}`)
+      } else {
+        throw new Error("Project created but no ID returned")
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create project")
     } finally {
@@ -216,13 +209,7 @@ function CreateProjectContent() {
                 <p className="mt-2 text-sm text-muted-foreground">
                   AI is breaking down your project into actionable components
                 </p>
-                {streamingText && (
-                  <div className="mt-6 max-h-40 w-full overflow-y-auto rounded-lg bg-secondary/50 p-4 text-left">
-                    <pre className="whitespace-pre-wrap text-xs text-muted-foreground">
-                      {streamingText}
-                    </pre>
-                  </div>
-                )}
+
               </div>
             </CardContent>
           </Card>
@@ -249,6 +236,84 @@ function CreateProjectContent() {
 
         {breakdown && (
           <div className="space-y-6">
+            {/* Project Overview - One Liner */}
+            {breakdown.one_liner && (
+              <Card className="border-primary/20 bg-primary/5">
+                <CardContent className="py-6">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="mt-1 h-5 w-5 shrink-0 text-primary" />
+                    <div>
+                      <h3 className="font-medium text-foreground">{breakdown.one_liner}</h3>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Problem & Target Users */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">解决什么问题</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{breakdown.problem || breakdown.description}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">面向什么用户</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{breakdown.target_users || "待定"}</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* MVP */}
+            {breakdown.mvp && breakdown.mvp.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5 text-green-500" />
+                    MVP（第一版包含什么）
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
+                    {breakdown.mvp.map((item, index) => (
+                      <li key={index} className="flex items-start gap-2 text-sm">
+                        <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+                        <span className="text-muted-foreground">{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* First Week Plan */}
+            {breakdown.first_week && breakdown.first_week.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-blue-500" />
+                    第一周推进计划
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-3 sm:grid-cols-7">
+                    {breakdown.first_week.map((day, index) => (
+                      <div key={index} className="rounded-lg bg-secondary/50 p-3 text-center">
+                        <div className="text-xs font-medium text-primary">{day.day}</div>
+                        <div className="mt-1 text-xs text-muted-foreground line-clamp-3">{day.goal}</div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Project Overview */}
             <Card>
               <CardHeader>

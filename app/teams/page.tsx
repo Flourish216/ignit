@@ -44,61 +44,220 @@ export default function TeamsPage() {
   })
 
   // Projects I own
-  const { data: myProjects } = useSWR(
+  const { data: myProjectsRaw } = useSWR(
     user ? `owned-projects-${user.id}` : null,
     async () => {
       if (!user) return []
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("projects")
-        .select(`
-          *,
-          teams!teams_project_id_fkey(
-            id,
-            name,
-            team_members!team_members_team_id_fkey(
-              id,
-              role,
-              status,
-              user:profiles!team_members_user_id_fkey(id, full_name, avatar_url)
-            )
-          )
-        `)
+        .select("*")
         .eq("owner_id", user.id)
         .order("created_at", { ascending: false })
+      
+      if (error) {
+        console.error("My projects fetch error:", error)
+        return []
+      }
       return data || []
     }
   )
 
+  // Fetch teams for my projects
+  const { data: projectTeams } = useSWR(
+    myProjectsRaw ? `project-teams-${user?.id}` : null,
+    async () => {
+      if (!myProjectsRaw || myProjectsRaw.length === 0) return {}
+      
+      const projectIds = myProjectsRaw.map(p => p.id)
+      const { data, error } = await supabase
+        .from("teams")
+        .select("id, name, project_id")
+        .in("project_id", projectIds)
+      
+      if (error) {
+        console.error("Teams fetch error:", error)
+        return {}
+      }
+      
+      const teamMap: Record<string, any> = {}
+      data?.forEach((team: any) => {
+        teamMap[team.project_id] = team
+      })
+      return teamMap
+    }
+  )
+
+  // Fetch team members
+  const { data: teamMembersData } = useSWR(
+    projectTeams ? `team-members-${user?.id}` : null,
+    async () => {
+      const teamIds = Object.values(projectTeams || {}).map((t: any) => t.id)
+      if (teamIds.length === 0) return {}
+      
+      const { data, error } = await supabase
+        .from("team_members")
+        .select("id, team_id, role, status, user_id")
+        .in("team_id", teamIds)
+        .eq("status", "active")
+      
+      if (error) {
+        console.error("Team members fetch error:", error)
+        return {}
+      }
+      
+      // Group by team_id
+      const membersMap: Record<string, any[]> = {}
+      data?.forEach((member: any) => {
+        if (!membersMap[member.team_id]) {
+          membersMap[member.team_id] = []
+        }
+        membersMap[member.team_id].push(member)
+      })
+      return membersMap
+    }
+  )
+
+  // Fetch member profiles
+  const { data: memberProfiles } = useSWR(
+    teamMembersData ? `member-profiles-${user?.id}` : null,
+    async () => {
+      const allMembers = Object.values(teamMembersData || {}).flat()
+      const userIds = [...new Set(allMembers.map((m: any) => m.user_id))]
+      if (userIds.length === 0) return {}
+      
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", userIds)
+      
+      if (error) {
+        console.error("Member profiles fetch error:", error)
+        return {}
+      }
+      
+      const profileMap: Record<string, any> = {}
+      data?.forEach((profile: any) => {
+        profileMap[profile.id] = profile
+      })
+      return profileMap
+    }
+  )
+
+  // Combine all data
+  const myProjects = myProjectsRaw?.map(project => {
+    const team = projectTeams?.[project.id]
+    const members = team ? teamMembersData?.[team.id] || [] : []
+    const membersWithProfiles = members.map((m: any) => ({
+      ...m,
+      user: memberProfiles?.[m.user_id] || null
+    }))
+    
+    return {
+      ...project,
+      teams: team ? [{
+        ...team,
+        team_members: membersWithProfiles
+      }] : []
+    }
+  })
+
   // Teams I'm a member of
-  const { data: myMemberships } = useSWR(
+  const { data: myMembershipsRaw } = useSWR(
     user ? `my-memberships-${user.id}` : null,
     async () => {
       if (!user) return []
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("team_members")
         .select(`
           *,
           team:teams!team_members_team_id_fkey(
             id,
             name,
-            project:projects!teams_project_id_fkey(
-              id,
-              title,
-              description,
-              status,
-              owner_id,
-              owner:profiles!projects_owner_id_fkey(id, full_name, avatar_url)
-            )
+            project_id
           )
         `)
         .eq("user_id", user.id)
         .eq("status", "active")
+      
+      if (error) {
+        console.error("Memberships fetch error:", error)
+        return []
+      }
       return data || []
     }
   )
 
+  // Fetch projects for memberships
+  const { data: membershipProjects } = useSWR(
+    myMembershipsRaw ? `membership-projects-${user?.id}` : null,
+    async () => {
+      if (!myMembershipsRaw || myMembershipsRaw.length === 0) return {}
+      
+      const projectIds = [...new Set(myMembershipsRaw.map((m: any) => m.team?.project_id).filter(Boolean))]
+      if (projectIds.length === 0) return {}
+      
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id, title, description, status, owner_id")
+        .in("id", projectIds)
+      
+      if (error) {
+        console.error("Membership projects fetch error:", error)
+        return {}
+      }
+      
+      const projectMap: Record<string, any> = {}
+      data?.forEach((p: any) => {
+        projectMap[p.id] = p
+      })
+      return projectMap
+    }
+  )
+
+  // Fetch project owners
+  const { data: projectOwners } = useSWR(
+    membershipProjects ? `project-owners-${user?.id}` : null,
+    async () => {
+      const ownerIds = [...new Set(Object.values(membershipProjects || {}).map((p: any) => p.owner_id).filter(Boolean))]
+      if (ownerIds.length === 0) return {}
+      
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", ownerIds)
+      
+      if (error) {
+        console.error("Project owners fetch error:", error)
+        return {}
+      }
+      
+      const ownerMap: Record<string, any> = {}
+      data?.forEach((o: any) => {
+        ownerMap[o.id] = o
+      })
+      return ownerMap
+    }
+  )
+
+  // Combine membership data
+  const myMemberships = myMembershipsRaw?.map((membership: any) => {
+    const project = membership.team?.project_id ? membershipProjects?.[membership.team.project_id] : null
+    const owner = project?.owner_id ? projectOwners?.[project.owner_id] : null
+    
+    return {
+      ...membership,
+      team: membership.team ? {
+        ...membership.team,
+        project: project ? {
+          ...project,
+          owner
+        } : null
+      } : null
+    }
+  })
+
   // Pending applications for my projects
-  const { data: pendingApplications } = useSWR(
+  const { data: pendingApplicationsRaw } = useSWR(
     user ? `pending-applications-${user.id}` : null,
     async () => {
       if (!user) return []
@@ -113,20 +272,78 @@ export default function TeamsPage() {
 
       const projectIds = projects.map(p => p.id)
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("project_applications")
-        .select(`
-          *,
-          user:profiles!project_applications_user_id_fkey(id, full_name, avatar_url, bio, skills),
-          project:projects!project_applications_project_id_fkey(id, title)
-        `)
+        .select("*")
         .in("project_id", projectIds)
         .eq("status", "pending")
         .order("created_at", { ascending: false })
 
+      if (error) {
+        console.error("Pending applications fetch error:", error)
+        return []
+      }
+
       return data || []
     }
   )
+
+  // Fetch applicant profiles
+  const { data: applicantProfiles } = useSWR(
+    pendingApplicationsRaw ? `applicant-profiles-${user?.id}` : null,
+    async () => {
+      if (!pendingApplicationsRaw || pendingApplicationsRaw.length === 0) return {}
+      
+      const userIds = [...new Set(pendingApplicationsRaw.map((a: any) => a.user_id))]
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url, bio, skills")
+        .in("id", userIds)
+      
+      if (error) {
+        console.error("Applicant profiles fetch error:", error)
+        return {}
+      }
+      
+      const profileMap: Record<string, any> = {}
+      data?.forEach((p: any) => {
+        profileMap[p.id] = p
+      })
+      return profileMap
+    }
+  )
+
+  // Fetch project titles for applications
+  const { data: applicationProjects } = useSWR(
+    pendingApplicationsRaw ? `application-projects-${user?.id}` : null,
+    async () => {
+      if (!pendingApplicationsRaw || pendingApplicationsRaw.length === 0) return {}
+      
+      const projectIds = [...new Set(pendingApplicationsRaw.map((a: any) => a.project_id))]
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id, title")
+        .in("id", projectIds)
+      
+      if (error) {
+        console.error("Application projects fetch error:", error)
+        return {}
+      }
+      
+      const projectMap: Record<string, any> = {}
+      data?.forEach((p: any) => {
+        projectMap[p.id] = p
+      })
+      return projectMap
+    }
+  )
+
+  // Combine application data
+  const pendingApplications = pendingApplicationsRaw?.map((app: any) => ({
+    ...app,
+    user: applicantProfiles?.[app.user_id] || null,
+    project: applicationProjects?.[app.project_id] || null
+  }))
 
   const handleApplicationResponse = async (applicationId: string, accept: boolean) => {
     if (!user) return

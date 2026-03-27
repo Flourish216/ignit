@@ -33,10 +33,7 @@ export default function ExplorePage() {
     async () => {
       let query = supabase
         .from("projects")
-        .select(`
-          *,
-          owner:profiles!projects_owner_id_fkey(id, full_name, avatar_url)
-        `)
+        .select("*")
         .order("created_at", { ascending: false })
 
       if (statusFilter !== "all") {
@@ -49,13 +46,48 @@ export default function ExplorePage() {
 
       const { data, error } = await query
 
-      if (error) throw error
+      if (error) {
+        console.error("Projects fetch error:", error)
+        throw error
+      }
       return data
     },
     { revalidateOnFocus: false }
   )
 
-  const filteredProjects = projects?.filter((project) => {
+  // Fetch owner profiles separately
+  const { data: ownerProfiles } = useSWR(
+    projects ? ["owner-profiles", projects.map(p => p.owner_id)] : null,
+    async () => {
+      if (!projects || projects.length === 0) return {}
+      
+      const ownerIds = [...new Set(projects.map(p => p.owner_id))]
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", ownerIds)
+      
+      if (error) {
+        console.error("Owner profiles fetch error:", error)
+        return {}
+      }
+      
+      // Create a map for quick lookup
+      const profileMap: Record<string, any> = {}
+      data?.forEach(profile => {
+        profileMap[profile.id] = profile
+      })
+      return profileMap
+    }
+  )
+
+  // Combine projects with owner data
+  const projectsWithOwners = projects?.map(project => ({
+    ...project,
+    owner: ownerProfiles?.[project.owner_id] || null
+  }))
+
+  const filteredProjects = projectsWithOwners?.filter((project) => {
     if (selectedSkills.length === 0) return true
     return project.required_roles.some((role: string) =>
       selectedSkills.some((skill) => role.toLowerCase().includes(skill.toLowerCase()))
@@ -151,7 +183,7 @@ export default function ExplorePage() {
           ) : filteredProjects && filteredProjects.length > 0 ? (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {filteredProjects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
+                <ProjectCard key={project.id} project={project as any} />
               ))}
             </div>
           ) : (
