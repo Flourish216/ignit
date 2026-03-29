@@ -576,7 +576,7 @@ export default function ProjectDetailPage() {
                       </div>
                     ))
                   ) : (
-                    project.required_roles.map((role: string, index: number) => (
+                    (project.required_roles || []).map((role: string, index: number) => (
                       <div key={index} className="rounded-lg border border-border p-3">
                         <h4 className="font-medium">{role}</h4>
                       </div>
@@ -617,7 +617,7 @@ export default function ProjectDetailPage() {
                                   <SelectValue placeholder="Select a role" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {(breakdown?.roles || project.required_roles.map((r: string) => ({ title: r }))).map(
+                                  {(breakdown?.roles || (project.required_roles || []).map((r: string) => ({ title: r }))).map(
                                     (role: { title: string }, index: number) => (
                                       <SelectItem key={index} value={role.title}>
                                         {role.title}
