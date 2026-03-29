@@ -39,7 +39,7 @@ import { createClient } from "@/lib/supabase/client"
 import useSWR, { mutate } from "swr"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 
 interface ProjectBreakdown {
   one_liner: string
@@ -68,23 +68,10 @@ interface ProjectBreakdown {
   }>
 }
 
-// Helper to get project ID from URL
-function getProjectIdFromUrl(): string | null {
-  if (typeof window === 'undefined') return null
-  const pathParts = window.location.pathname.split('/')
-  const projectId = pathParts[pathParts.length - 1]
-  return projectId && projectId !== 'project' ? projectId : null
-}
-
 export default function ProjectDetailPage() {
-  const [id, setId] = useState<string | null>(null)
+  const params = useParams()
+  const id = params?.id as string | null
   const router = useRouter()
-
-  useEffect(() => {
-    const projectId = getProjectIdFromUrl()
-    console.log("Project ID from URL:", projectId)
-    setId(projectId)
-  }, [])
   const supabase = createClient()
   const [isApplying, setIsApplying] = useState(false)
   const [selectedRole, setSelectedRole] = useState("")
@@ -176,10 +163,11 @@ export default function ProjectDetailPage() {
       if (requiredSkills.length === 0) return []
 
       // Fetch profiles that have any matching skill (exclude self and owner)
+      const excludeIds = [user.id, project.owner_id].filter(Boolean)
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, full_name, avatar_url, bio, skills")
-        .not("id", "in", `(${[user.id, project.owner_id].join(",")})`)
+        .not("id", "in", `(${excludeIds.join(",")})`)
         .not("skills", "is", null)
 
       if (!profiles || profiles.length === 0) return []
