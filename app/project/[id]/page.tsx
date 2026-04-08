@@ -445,7 +445,7 @@ export default function ProjectDetailPage() {
             )}
 
             {/* MVP */}
-            {breakdown?.mvp && breakdown.mvp.length > 0 && (
+            {breakdown?.mvp && Array.isArray(breakdown.mvp) && breakdown.mvp.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -467,7 +467,7 @@ export default function ProjectDetailPage() {
             )}
 
             {/* First Week */}
-            {breakdown?.first_week && breakdown.first_week.length > 0 && (
+            {breakdown?.first_week && Array.isArray(breakdown.first_week) && breakdown.first_week.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -489,7 +489,7 @@ export default function ProjectDetailPage() {
             )}
 
             {/* Milestones */}
-            {breakdown?.milestones && (
+            {breakdown?.milestones && Array.isArray(breakdown.milestones) && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -524,7 +524,7 @@ export default function ProjectDetailPage() {
             )}
 
             {/* Challenges */}
-            {breakdown?.challenges && (
+            {breakdown?.challenges && Array.isArray(breakdown.challenges) && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -561,7 +561,7 @@ export default function ProjectDetailPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {breakdown?.roles ? (
+                  {breakdown?.roles && Array.isArray(breakdown.roles) ? (
                     breakdown.roles.map((role, index) => (
                       <div key={index} className="rounded-lg border border-border p-3">
                         <h4 className="font-medium">{role.title}</h4>

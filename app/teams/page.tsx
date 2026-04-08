@@ -40,7 +40,10 @@ export default function TeamsPage() {
 
   const { data: user, isLoading: userLoading } = useSWR("user", async () => {
     const { data: { user } } = await supabase.auth.getUser()
-    return user
+    return user ?? null
+  }, {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
   })
 
   // Projects I own
@@ -401,7 +404,8 @@ export default function TeamsPage() {
     }
   }
 
-  if (userLoading) {
+  // Show loading while checking auth (user is undefined = not yet loaded)
+  if (userLoading || user === undefined) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
@@ -412,7 +416,8 @@ export default function TeamsPage() {
     )
   }
 
-  if (!user) {
+  // Only redirect when auth check is complete and user is confirmed null
+  if (user === null) {
     router.push("/auth/login?redirect=/teams")
     return null
   }
