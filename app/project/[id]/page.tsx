@@ -40,6 +40,7 @@ import useSWR, { mutate } from "swr"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
 import { useRouter, useParams } from "next/navigation"
+import { ProjectChat } from "@/components/project-chat"
 
 interface ProjectBreakdown {
   one_liner: string
@@ -329,6 +330,7 @@ export default function ProjectDetailPage() {
 
   const breakdown = project.ai_breakdown as ProjectBreakdown | null
   const isOwner = user?.id === project.owner_id
+  const isTeamMember = isOwner || (teamMembers?.some((m: any) => m.user_id === user?.id) ?? false)
   
   // Combine project with owner data
   const projectWithOwner = {
@@ -736,6 +738,13 @@ export default function ProjectDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Team Chat */}
+            <ProjectChat
+              projectId={id}
+              userId={user?.id}
+              isMember={isTeamMember}
+            />
 
             {/* Team Members */}
             {teamMembers && teamMembers.length > 0 && (
