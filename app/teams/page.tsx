@@ -508,6 +508,13 @@ export default function TeamsPage() {
                           <Badge variant={project.status === "recruiting" ? "default" : "secondary"}>
                             {project.status}
                           </Badge>
+                          {project.teams?.[0]?.id && (
+                            <Button asChild size="sm" className="bg-[#5865f2] hover:bg-[#4752c4]">
+                              <Link href={`/team/${project.teams[0].id}`}>
+                                Open Workspace
+                              </Link>
+                            </Button>
+                          )}
                           <Button asChild size="sm" variant="outline">
                             <Link href={`/project/${project.id}`}>
                               View
@@ -596,6 +603,14 @@ export default function TeamsPage() {
                             >
                               {membership.team?.project?.title}
                             </Link>
+                            {membership.team?.id && (
+                              <Link
+                                href={`/team/${membership.team.id}`}
+                                className="ml-2 text-xs text-[#5865f2] hover:underline"
+                              >
+                                Open Workspace →
+                              </Link>
+                            )}
                             <p className="text-sm text-muted-foreground">
                               Your role: <span className="font-medium">{membership.role}</span>
                             </p>
