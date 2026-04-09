@@ -233,12 +233,14 @@ export default function ProjectDetailPage() {
     setIsApplying(true)
     setErrorMessage(null)
     try {
-      const { error } = await supabase.from("project_applications").insert({
+      console.log("Inserting application:", { project_id: id, user_id: user.id, role_applied: selectedRole, message: applicationMessage })
+      const { error, data } = await supabase.from("project_applications").insert({
         project_id: id,
         user_id: user.id,
         role_applied: selectedRole,
-        message: applicationMessage,
+        message: applicationMessage || null,
       })
+      console.log("Insert result:", { error, data })
 
       if (error) throw error
 
