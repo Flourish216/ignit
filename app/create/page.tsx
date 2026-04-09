@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useEffect, useState, useRef } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Navigation } from "@/components/navigation"
 import { IdeaInput } from "@/components/idea-input"
@@ -49,6 +49,16 @@ function CreateProjectContent() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loadingMessage, setLoadingMessage] = useState(0)
+  const loadingMessages = [
+    "Analyzing your idea...",
+    "Structuring the project...",
+    "Identifying key features...",
+    "Defining team roles...",
+    "Planning the roadmap...",
+    "Almost there...",
+  ]
+  const loadingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const { data: user } = useSWR("user", async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -70,6 +80,10 @@ function CreateProjectContent() {
     setIsAnalyzing(true)
     setError(null)
     setBreakdown(null)
+    setLoadingMessage(0)
+    loadingIntervalRef.current = setInterval(() => {
+      setLoadingMessage(prev => (prev + 1) % loadingMessages.length)
+    }, 2000)
 
     try {
       const response = await fetch("/api/ai/breakdown", {
@@ -93,6 +107,10 @@ function CreateProjectContent() {
       setError(err instanceof Error ? err.message : "Something went wrong")
     } finally {
       setIsAnalyzing(false)
+      if (loadingIntervalRef.current) {
+        clearInterval(loadingIntervalRef.current)
+        loadingIntervalRef.current = null
+      }
     }
   }
 
@@ -205,16 +223,12 @@ function CreateProjectContent() {
                     <Sparkles className="h-8 w-8 animate-pulse text-primary" />
                   </div>
                 </div>
-                <h3 className="mt-6 text-lg font-semibold text-foreground animate-pulse">
-                  Analyzing your idea...
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground animate-pulse">
-                  AI is breaking down your project into actionable components
+                <p className="mt-6 text-lg font-semibold text-foreground">
+                  {loadingMessages[loadingMessage]}
                 </p>
                 <div className="mt-4 h-1 w-32 overflow-hidden rounded-full bg-muted">
                   <div className="h-full w-1/2 animate-[shimmer_1.5s_infinite] rounded-full bg-primary" />
                 </div>
-
               </div>
             </CardContent>
           </Card>
@@ -259,7 +273,7 @@ function CreateProjectContent() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">解决什么问题</CardTitle>
+                  <CardTitle className="text-base">What Problem Does This Solve</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">{breakdown.problem || breakdown.description}</p>
@@ -267,7 +281,7 @@ function CreateProjectContent() {
               </Card>
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">面向什么用户</CardTitle>
+                  <CardTitle className="text-base">Who Is This For</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">{breakdown.target_users || "待定"}</p>
@@ -281,7 +295,7 @@ function CreateProjectContent() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Target className="h-5 w-5 text-green-500" />
-                    MVP（第一版包含什么）
+                    MVP (What's Included in v1)
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -303,7 +317,7 @@ function CreateProjectContent() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-blue-500" />
-                    第一周推进计划
+                    First Week Plan
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
