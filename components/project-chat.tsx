@@ -114,6 +114,7 @@ export function ProjectChat({ projectId, userId, isMember }: ProjectChatProps) {
 
     if (error) {
       console.error("Error sending message:", error)
+      alert("Failed to send: " + error.message)
     } else {
       setNewMessage("")
     }
