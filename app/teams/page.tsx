@@ -101,7 +101,7 @@ export default function TeamsPage() {
         .from("team_members")
         .select("id, team_id, role, status, user_id")
         .in("team_id", teamIds)
-        .eq("status", "active")
+        .eq("status", "accepted")
       
       if (error) {
         console.error("Team members fetch error:", error)
@@ -180,7 +180,7 @@ export default function TeamsPage() {
           )
         `)
         .eq("user_id", user.id)
-        .eq("status", "active")
+        .eq("status", "accepted")
       
       if (error) {
         console.error("Memberships fetch error:", error)
@@ -389,7 +389,7 @@ export default function TeamsPage() {
             team_id: team?.id,
             user_id: application.user_id,
             role: application.role_applied,
-            status: "active",
+            status: "accepted",
           })
       }
 

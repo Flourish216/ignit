@@ -141,7 +141,7 @@ export default function TeamWorkspacePage() {
           user:profiles(id, full_name, avatar_url)
         `)
         .eq("team_id", teamId)
-        .eq("status", "active")
+        .eq("status", "accepted")
       
       if (error) throw error
       return data as TeamMember[]

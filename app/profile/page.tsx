@@ -122,7 +122,7 @@ export default function ProfilePage() {
           )
         `)
         .eq("user_id", user.id)
-        .eq("status", "active")
+        .eq("status", "accepted")
       
       if (error) {
         console.error("Joined teams fetch error:", error)
