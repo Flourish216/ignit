@@ -217,7 +217,7 @@ export default function ProjectDetailPage() {
           user:profiles!team_members_user_id_fkey(id, full_name, avatar_url)
         `)
         .eq("team_id", teams.id)
-        .eq("status", "active")
+        .eq("status", "accepted")
 
       return members || []
     }
