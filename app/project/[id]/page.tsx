@@ -335,6 +335,15 @@ export default function ProjectDetailPage() {
   const isOwner = user?.id === project.owner_id
   const isTeamMember = isOwner || (teamMembers?.some((m: any) => m.user_id === user?.id) ?? false)
   
+  // Debug
+  console.log("isTeamMember debug:", {
+    userId: user?.id,
+    ownerId: project.owner_id,
+    isOwner,
+    teamMembers,
+    isTeamMember
+  })
+  
   // Combine project with owner data
   const projectWithOwner = {
     ...project,
