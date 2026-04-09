@@ -7,7 +7,7 @@ import { IdeaInput } from "@/components/idea-input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Sparkles, CheckCircle, Users, Target, AlertTriangle, ArrowRight, RefreshCw, Calendar } from "lucide-react"
+import { Loader2, Sparkles, CheckCircle, Users, Target, AlertTriangle, ArrowRight, RefreshCw, Calendar, Download, Edit3, Check } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import useSWR from "swr"
 
@@ -45,6 +45,8 @@ function CreateProjectContent() {
   
   const initialIdea = searchParams.get("idea") || ""
   const [idea, setIdea] = useState(initialIdea)
+  const [editableIdea, setEditableIdea] = useState(initialIdea)
+  const [isEditingIdea, setIsEditingIdea] = useState(false)
   const [breakdown, setBreakdown] = useState<ProjectBreakdown | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
@@ -70,6 +72,35 @@ function CreateProjectContent() {
       analyzeIdea(initialIdea)
     }
   }, [initialIdea, user])
+
+  // Sync editable idea when breakdown changes
+  useEffect(() => {
+    if (breakdown) {
+      setEditableIdea(idea)
+      setIsEditingIdea(false)
+    }
+  }, [breakdown])
+
+  const handleRegenerate = () => {
+    if (editableIdea.trim()) {
+      setIdea(editableIdea)
+      analyzeIdea(editableIdea)
+    }
+  }
+
+  const downloadProjectPlan = () => {
+    if (!breakdown) return
+    const content = `# ${breakdown.title}\n\n${breakdown.description}\n\n## One-Liner\n${breakdown.one_liner}\n\n## Problem\n${breakdown.problem}\n\n## Target Users\n${breakdown.target_users}\n\n## MVP\n${breakdown.mvp.map((item, i) => `${i + 1}. ${item}`).join("\n")}\n\n## First Week Plan\n${breakdown.first_week.map(day => `- **${day.day}**: ${day.goal}`).join("\n")}\n\n## Milestones\n${breakdown.milestones.map(m => `- **${m.name}** (${m.timeframe}): ${m.description}`).join("\n")}\n\n## Required Team Roles\n${breakdown.roles.map(r => `- **${r.title}**: ${r.description}\n  Skills: ${r.skills.join(", ")}`).join("\n")}\n\n## Potential Challenges\n${breakdown.challenges.map(c => `- **${c.challenge}**: ${c.solution}`).join("\n")}\n`
+    const blob = new Blob([content], { type: "text/markdown" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `${breakdown.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_plan.md`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
 
   const analyzeIdea = async (ideaText: string) => {
     if (!user) {
@@ -255,6 +286,83 @@ function CreateProjectContent() {
 
         {breakdown && (
           <div className="space-y-6">
+            {/* Editable Prompt + Download */}
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Edit3 className="h-4 w-4 text-muted-foreground" />
+                    Your Project Idea
+                  </CardTitle>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={downloadProjectPlan}
+                      className="gap-1.5"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download Plan
+                    </Button>
+                    {!isEditingIdea ? (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsEditingIdea(true)}
+                        className="gap-1.5"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                        Edit & Regenerate
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={handleRegenerate}
+                        disabled={isAnalyzing}
+                        className="gap-1.5"
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        Regenerate
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isEditingIdea ? (
+                  <div className="space-y-3">
+                    <textarea
+                      value={editableIdea}
+                      onChange={(e) => setEditableIdea(e.target.value)}
+                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px] resize-none"
+                      placeholder="Describe your project idea..."
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={handleRegenerate}
+                        disabled={isAnalyzing || !editableIdea.trim()}
+                      >
+                        {isAnalyzing ? "Generating..." : "Generate New Plan"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditableIdea(idea)
+                          setIsEditingIdea(false)
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{idea}</p>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Project Overview - One Liner */}
             {breakdown.one_liner && (
               <Card className="border-primary/20 bg-primary/5">
