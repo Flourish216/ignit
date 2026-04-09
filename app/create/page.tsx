@@ -205,10 +205,15 @@ function CreateProjectContent() {
                     <Sparkles className="h-8 w-8 animate-pulse text-primary" />
                   </div>
                 </div>
-                <h3 className="mt-6 text-lg font-semibold text-foreground">Analyzing your idea...</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
+                <h3 className="mt-6 text-lg font-semibold text-foreground animate-pulse">
+                  Analyzing your idea...
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground animate-pulse">
                   AI is breaking down your project into actionable components
                 </p>
+                <div className="mt-4 h-1 w-32 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full w-1/2 animate-[shimmer_1.5s_infinite] rounded-full bg-primary" />
+                </div>
 
               </div>
             </CardContent>
