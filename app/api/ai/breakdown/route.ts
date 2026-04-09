@@ -21,18 +21,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const response = await fetch("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "glm-4-flash",
-        messages: [
-          {
-            role: "system",
-            content: `You are a project planning assistant for a collaborative platform where anyone — not just developers — can launch and grow their ideas. Projects can be apps, content series, community initiatives, physical products, social enterprises, creative works, educational programs, and more.
+    // Detect input language
+    const isChinese = /[\u4e00-\u9fa5]/.test(idea)
+
+    const userPrompt = isChinese
+      ? `请帮我整理这个项目想法 "${idea}"。\n\n请从以下几个角度分析：\n1. 这个项目在解决什么问题？\n2. 面向什么用户群体？\n3. 一句话概括这个项目是什么？\n4. 第一版MVP应该包含什么？\n5. 最初7天可以怎么推进？\n\n请用JSON格式返回完整项目规划。`
+      : `Please help me structure this project idea: "${idea}".\n\nAnalyze it from these perspectives:\n1. What problem does this project solve?\n2. Who is the target user group?\n3. One sentence summarizing what this project is?\n4. What should the first MVP include?\n5. How can we push forward in the first 7 days?\n\nPlease respond in JSON format with the complete project plan. All field labels and content must be in English.`
+
+    const systemPrompt = `You are a project planning assistant for a collaborative platform where anyone — not just developers — can launch and grow their ideas. Projects can be apps, content series, community initiatives, physical products, social enterprises, creative works, educational programs, and more.
 
 Your goal is to help users turn a vague idea into a clear, collaborative project.
 
@@ -51,7 +47,7 @@ When given a project idea, analyze and structure it into:
 
 IMPORTANT: Your response should help someone understand the project at a glance and decide if they want to join.
 
-Respond in JSON format:
+Respond ONLY in valid JSON format with these exact keys:
 {
   "one_liner": "One sentence project summary",
   "title": "Project Title",
@@ -78,11 +74,18 @@ Respond in JSON format:
     { "challenge": "Description of challenge", "solution": "How to address it" }
   ]
 }`
-          },
-          {
-            role: "user",
-            content: `请帮我整理这个项目想法 "${idea}"。\n\n请从以下几个角度分析：\n1. 这个项目在解决什么问题？\n2. 面向什么用户群体？\n3. 一句话概括这个项目是什么？\n4. 第一版MVP应该包含什么？\n5. 最初7天可以怎么推进？\n\n请用JSON格式返回完整项目规划。`
-          }
+
+    const response = await fetch("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "glm-4-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
         ],
         temperature: 0.7,
       }),
