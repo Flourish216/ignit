@@ -28,11 +28,21 @@ import Link from "next/link"
 import { ProjectCard } from "@/components/project-card"
 
 const availableSkills = [
-  "React", "Next.js", "TypeScript", "Node.js", "Python", "Go", "Rust",
-  "UI/UX Design", "Product Design", "Graphic Design", "Illustration",
-  "Marketing", "Growth", "Sales", "Content Writing", "SEO",
-  "AI/ML", "Data Science", "DevOps", "Mobile Development", "Backend",
-  "Project Management", "Business Strategy", "Finance"
+  // 创意与内容
+  "Writing", "Storytelling", "Video Production", "Photography", "Illustration",
+  "Graphic Design", "Branding", "Music", "Podcast",
+  // 商业与运营
+  "Marketing", "Growth", "Sales", "Business Strategy", "Finance",
+  "Operations", "Community Building", "Fundraising", "Partnership",
+  // 产品与设计
+  "Product Management", "UI/UX Design", "Research", "Project Management",
+  "Customer Success",
+  // 技术
+  "Frontend Development", "Backend Development", "Mobile Development",
+  "AI/ML", "Data Analysis", "No-code / Low-code",
+  // 其他专业领域
+  "Education", "Healthcare", "Legal", "Social Impact", "Sustainability",
+  "Hardware / Physical Products",
 ]
 
 export default function ProfilePage() {

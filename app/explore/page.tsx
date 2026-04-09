@@ -19,7 +19,7 @@ const statusFilters = [
 ]
 
 const popularSkills = [
-  "React", "Node.js", "Python", "Design", "Marketing", "Mobile", "AI/ML", "Backend"
+  "Design", "Marketing", "Writing", "Video", "Community", "Product", "AI/ML", "No-code"
 ]
 
 export default function ExplorePage() {
