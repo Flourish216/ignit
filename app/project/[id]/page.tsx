@@ -224,23 +224,17 @@ export default function ProjectDetailPage() {
   )
 
   const handleApply = async () => {
-    console.log("handleApply called", { user: !!user, selectedRole, id })
-    if (!user || !selectedRole || !id) {
-      console.log("handleApply blocked:", { user: !!user, selectedRole, id })
-      return
-    }
+    if (!user || !selectedRole || !id) return
 
     setIsApplying(true)
     setErrorMessage(null)
     try {
-      console.log("Inserting application:", { project_id: id, user_id: user.id, role_applied: selectedRole, message: applicationMessage })
-      const { error, data } = await supabase.from("project_applications").insert({
+      const { error } = await supabase.from("project_applications").insert({
         project_id: id,
         user_id: user.id,
         role_applied: selectedRole,
         message: applicationMessage || null,
       })
-      console.log("Insert result:", { error, data })
 
       if (error) throw error
 
@@ -621,11 +615,6 @@ export default function ProjectDetailPage() {
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4 py-4">
-                            {/* Debug roles */}
-                            <div className="text-xs text-gray-400 bg-gray-100 p-2 rounded">
-                              Debug: breakdown.roles = {JSON.stringify(breakdown?.roles)}<br/>
-                              Debug: project.required_roles = {JSON.stringify(project.required_roles)}
-                            </div>
                             <div>
                               <label className="text-sm font-medium">Role</label>
                               <Select value={selectedRole} onValueChange={setSelectedRole}>
@@ -658,12 +647,6 @@ export default function ProjectDetailPage() {
                               Cancel
                             </Button>
                             <Button onClick={handleApply} disabled={!selectedRole || isApplying}>
-                              {/* Debug info - remove later */}
-                              {!selectedRole && (
-                                <span className="ml-2 text-xs opacity-50">
-                                  (no role selected - select one above)
-                                </span>
-                              )}
                               {isApplying ? (
                                 <>
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
