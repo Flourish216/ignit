@@ -426,7 +426,7 @@ export default function ProjectDetailPage() {
                 {breakdown.problem && (
                   <Card>
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-base">解决什么问题</CardTitle>
+                      <CardTitle className="text-base">What Problem Does This Solve</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-muted-foreground">{breakdown.problem}</p>
@@ -436,7 +436,7 @@ export default function ProjectDetailPage() {
                 {breakdown.target_users && (
                   <Card>
                     <CardHeader className="pb-3">
-                      <CardTitle className="text-base">面向什么用户</CardTitle>
+                      <CardTitle className="text-base">Who Is This For</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <p className="text-sm text-muted-foreground">{breakdown.target_users}</p>
@@ -452,7 +452,7 @@ export default function ProjectDetailPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Target className="h-5 w-5 text-green-500" />
-                    MVP（第一版包含什么）
+                    MVP (What's Included in v1)
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -474,7 +474,7 @@ export default function ProjectDetailPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-blue-500" />
-                    第一周推进计划
+                    First Week Plan
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
