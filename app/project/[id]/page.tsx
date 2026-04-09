@@ -78,6 +78,7 @@ export default function ProjectDetailPage() {
   const [selectedRole, setSelectedRole] = useState("")
   const [applicationMessage, setApplicationMessage] = useState("")
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const { data: user } = useSWR("user", async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -226,6 +227,7 @@ export default function ProjectDetailPage() {
     if (!user || !selectedRole || !id) return
 
     setIsApplying(true)
+    setErrorMessage(null)
     try {
       const { error } = await supabase.from("project_applications").insert({
         project_id: id,
@@ -242,6 +244,7 @@ export default function ProjectDetailPage() {
       setApplicationMessage("")
     } catch (error) {
       console.error("Error applying:", error)
+      setErrorMessage(error instanceof Error ? error.message : "Failed to submit application")
     } finally {
       setIsApplying(false)
     }
@@ -653,6 +656,9 @@ export default function ProjectDetailPage() {
                                 "Submit Application"
                               )}
                             </Button>
+                            {errorMessage && (
+                              <p className="mt-2 text-sm text-red-500">{errorMessage}</p>
+                            )}
                           </DialogFooter>
                         </DialogContent>
                       </Dialog>
