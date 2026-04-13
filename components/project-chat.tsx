@@ -73,6 +73,7 @@ export function ProjectChat({ projectId, userId, isMember }: ProjectChatProps) {
           filter: `project_id=eq.${projectId}`,
         },
         async (payload) => {
+          console.log(" realtime message received:", payload)
           const newMsg = payload.new as Message
           // 获取发送者信息
           const { data: userData } = await supabase
@@ -87,7 +88,9 @@ export function ProjectChat({ projectId, userId, isMember }: ProjectChatProps) {
           ])
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log("Realtime subscription status:", status)
+      })
 
     return () => {
       supabase.removeChannel(channel)
