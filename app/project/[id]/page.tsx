@@ -350,6 +350,7 @@ export default function ProjectDetailPage() {
 
   const breakdown = project.ai_breakdown as ProjectBreakdown | null
   const isOwner = user?.id === project.owner_id
+  console.log("isTeamMember debug:", { userId: user?.id, ownerId: project.owner_id, isOwner, teamMembersCount: teamMembers?.length, teamMembers })
   const isTeamMember = isOwner || (teamMembers?.some((m: any) => m.user_id === user?.id) ?? false)
   
   // Combine project with owner data
