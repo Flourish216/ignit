@@ -210,16 +210,33 @@ export default function ProjectDetailPage() {
 
       if (!teams) return []
 
-      const { data: members } = await supabase
+      // 查 team_members
+      const { data: members, error } = await supabase
         .from("team_members")
-        .select(`
-          *,
-          user:profiles!team_members_user_id_fkey(id, full_name, avatar_url)
-        `)
+        .select("id, user_id, role, status")
         .eq("team_id", teams.id)
         .eq("status", "accepted")
 
-      return members || []
+      if (error) {
+        console.error("Team members fetch error:", error)
+        return []
+      }
+
+      if (!members || members.length === 0) return []
+
+      // 单独查 profiles
+      const userIds = members.map((m: any) => m.user_id)
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .in("id", userIds)
+
+      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
+
+      return members.map((m: any) => ({
+        ...m,
+        user: profileMap.get(m.user_id) || null,
+      }))
     }
   )
 

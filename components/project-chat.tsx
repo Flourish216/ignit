@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,7 +25,7 @@ interface Message {
 interface ProjectChatProps {
   projectId: string
   userId: string | undefined
-  isMember: boolean // 是否是团队成员（owner 或 active member）
+  isMember: boolean
 }
 
 export function ProjectChat({ projectId, userId, isMember }: ProjectChatProps) {
@@ -37,33 +37,41 @@ export function ProjectChat({ projectId, userId, isMember }: ProjectChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   // 加载历史消息
-  useEffect(() => {
-    const loadMessages = async () => {
-      const { data, error } = await supabase
-        .from("messages")
-        .select(`
-          *,
-          user:profiles!messages_user_id_fkey(full_name, avatar_url)
-        `)
-        .eq("project_id", projectId)
-        .order("created_at", { ascending: true })
-        .limit(100)
+  const loadMessages = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("messages")
+      .select(`
+        *,
+        user:profiles!messages_user_id_fkey(full_name, avatar_url)
+      `)
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: true })
+      .limit(100)
 
-      if (error) {
-        console.error("Error loading messages:", error)
-      } else {
-        setMessages(data || [])
-      }
-      setIsLoading(false)
+    if (error) {
+      console.error("Error loading messages:", error)
+    } else {
+      setMessages(data || [])
     }
-
-    loadMessages()
   }, [projectId, supabase])
 
-  // 订阅实时消息
+  useEffect(() => {
+    loadMessages().then(() => setIsLoading(false))
+  }, [loadMessages])
+
+  // 实时订阅：用 Broadcast + postgres_changes 双保险
   useEffect(() => {
     const channel = supabase
-      .channel(`project-messages-${projectId}`)
+      .channel(`chat-${projectId}`, {
+        config: {
+          broadcast: { self: true }, // 自己也能收到广播
+        },
+      })
+      // 方式1: Broadcast - 即时通知有新消息
+      .on("broadcast", { event: "new-message" }, () => {
+        loadMessages()
+      })
+      // 方式2: postgres_changes 作为备选
       .on(
         "postgres_changes",
         {
@@ -72,30 +80,18 @@ export function ProjectChat({ projectId, userId, isMember }: ProjectChatProps) {
           table: "messages",
           filter: `project_id=eq.${projectId}`,
         },
-        async (payload) => {
-          console.log(" realtime message received:", payload)
-          const newMsg = payload.new as Message
-          // 获取发送者信息
-          const { data: userData } = await supabase
-            .from("profiles")
-            .select("full_name, avatar_url")
-            .eq("id", newMsg.user_id)
-            .single()
-
-          setMessages((prev) => [
-            ...prev,
-            { ...newMsg, user: userData || undefined },
-          ])
+        () => {
+          loadMessages()
         }
       )
       .subscribe((status) => {
-        console.log("Realtime subscription status:", status)
+        console.log("Chat subscription status:", status)
       })
 
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [projectId, supabase])
+  }, [projectId, supabase, loadMessages])
 
   // 自动滚动到底部
   useEffect(() => {
@@ -109,17 +105,28 @@ export function ProjectChat({ projectId, userId, isMember }: ProjectChatProps) {
     if (!newMessage.trim() || !userId || !isMember) return
 
     setIsSending(true)
+    const content = newMessage.trim()
+    setNewMessage("")
+
     const { error } = await supabase.from("messages").insert({
       project_id: projectId,
       user_id: userId,
-      content: newMessage.trim(),
+      content,
     })
 
     if (error) {
       console.error("Error sending message:", error)
+      setNewMessage(content) // 恢复输入内容
       alert("Failed to send: " + error.message)
     } else {
-      setNewMessage("")
+      // 广播通知其他用户刷新
+      await supabase.channel(`chat-${projectId}`).send({
+        type: "broadcast",
+        event: "new-message",
+        payload: { project_id: projectId },
+      })
+      // 自己也刷新一下确保数据一致
+      loadMessages()
     }
     setIsSending(false)
   }
