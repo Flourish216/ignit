@@ -84,9 +84,7 @@ export function ProjectChat({ projectId, userId, isMember }: ProjectChatProps) {
           loadMessages()
         }
       )
-      .subscribe((status) => {
-        console.log("Chat subscription status:", status)
-      })
+      .subscribe()
 
     return () => {
       supabase.removeChannel(channel)
@@ -115,8 +113,7 @@ export function ProjectChat({ projectId, userId, isMember }: ProjectChatProps) {
     })
 
     if (error) {
-      console.error("Error sending message:", error)
-      setNewMessage(content) // 恢复输入内容
+      setNewMessage(content)
       alert("Failed to send: " + error.message)
     } else {
       // 广播通知其他用户刷新

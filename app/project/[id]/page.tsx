@@ -89,26 +89,14 @@ export default function ProjectDetailPage() {
   const { data: project, isLoading, error: projectError } = useSWR(
     id ? ["project", id] : null,
     async () => {
-      console.log("Fetching project with ID:", id)
-      
-      try {
-        const { data, error } = await supabase
-          .from("projects")
-          .select("*")
-          .eq("id", id)
-          .single()
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .eq("id", id)
+        .single()
 
-        if (error) {
-          console.error("Project fetch error:", error)
-          throw error
-        }
-        
-        console.log("Project fetched successfully:", data)
-        return data
-      } catch (e) {
-        console.error("Exception in project fetch:", e)
-        throw e
-      }
+      if (error) throw error
+      return data
     },
     {
       revalidateOnFocus: true,
@@ -272,11 +260,7 @@ export default function ProjectDetailPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   const handleDelete = async () => {
-    console.log("handleDelete called, id:", id, "user:", user?.id, "owner_id:", project?.owner_id)
-    if (!id) {
-      alert("No project ID")
-      return
-    }
+    if (!id) return
     if (user?.id !== project.owner_id) {
       alert("You are not the owner of this project")
       return
@@ -285,13 +269,11 @@ export default function ProjectDetailPage() {
     try {
       const { error } = await supabase.from("projects").delete().eq("id", id)
       if (error) {
-        console.error("Delete error:", error)
         alert("Failed to delete: " + error.message)
         return
       }
       router.push("/explore")
     } catch (error) {
-      console.error("Error deleting project:", error)
       alert("Failed to delete project")
     } finally {
       setIsDeleting(false)
@@ -326,7 +308,6 @@ export default function ProjectDetailPage() {
   }
 
   if (!project) {
-    console.error("Project is null/undefined. isLoading:", isLoading, "error:", projectError, "id:", id)
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
@@ -350,7 +331,6 @@ export default function ProjectDetailPage() {
 
   const breakdown = project.ai_breakdown as ProjectBreakdown | null
   const isOwner = user?.id === project.owner_id
-  console.log("isTeamMember debug:", { userId: user?.id, ownerId: project.owner_id, isOwner, teamMembersCount: teamMembers?.length, teamMembers })
   const isTeamMember = isOwner || (teamMembers?.some((m: any) => m.user_id === user?.id) ?? false)
   
   // Combine project with owner data
@@ -723,38 +703,11 @@ export default function ProjectDetailPage() {
                   </Button>
                 )}
                 
-                {/* Debug: show owner info */}
-                {process.env.NODE_ENV === 'development' && user && (
-                  <div className="text-xs text-gray-500 mt-2">
-                    Debug: user={user.id?.slice(0,8)} owner={project.owner_id?.slice(0,8)} isOwner={isOwner ? 'yes' : 'no'}
-                  </div>
-                )}
-                
-                {/* Delete button - always show for logged in users */}
-                {user && project && (
+                {isOwner && (
                   <Button 
                     variant="destructive" 
                     className="mt-2 w-full"
-                    onClick={async () => {
-                      if (!confirm(`Are you sure you want to delete "${project.title}"?`)) {
-                        return
-                      }
-                      if (user.id !== project.owner_id) {
-                        alert("You are not the owner!")
-                        return
-                      }
-                      try {
-                        const { error } = await supabase.from("projects").delete().eq("id", id)
-                        if (error) {
-                          alert("Delete failed: " + error.message)
-                          return
-                        }
-                        alert("Deleted successfully!")
-                        window.location.href = "/explore"
-                      } catch (err) {
-                        alert("Error: " + err)
-                      }
-                    }}
+                    onClick={() => setShowDeleteDialog(true)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete Project

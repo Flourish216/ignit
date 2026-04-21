@@ -203,25 +203,13 @@ function CreateProjectContent() {
 
       if (error) throw error
 
-      console.log("Project created successfully:", data.id)
-
       // Create a team for this project (non-blocking)
-      const { error: teamError } = await supabase.from("teams").insert({
+      await supabase.from("teams").insert({
         project_id: data.id,
         name: `${breakdown.title} Team`,
       })
-      
-      if (teamError) {
-        console.error("Team creation error (non-blocking):", teamError)
-      }
 
-      // Ensure we have the project ID before navigating
-      if (data?.id) {
-        console.log("Navigating to project:", data.id)
-        router.push(`/project/${data.id}`)
-      } else {
-        throw new Error("Project created but no ID returned")
-      }
+      router.push(`/project/${data.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create project")
     } finally {
