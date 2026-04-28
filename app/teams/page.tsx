@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
   DialogContent,
@@ -37,6 +36,7 @@ export default function TeamsPage() {
   const supabase = createClient()
   const [selectedApplication, setSelectedApplication] = useState<any>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [activeView, setActiveView] = useState<"owned" | "member" | "applications">("owned")
 
   const { data: user, isLoading: userLoading } = useSWR("user", async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -464,61 +464,56 @@ export default function TeamsPage() {
           </Card>
         )}
 
-        <Tabs defaultValue="owned" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="owned" className="gap-2">
-              <FolderOpen className="h-4 w-4" />
-              My Projects
-              {myProjects && myProjects.length > 0 && (
-                <Badge variant="secondary" className="ml-1">
-                  {myProjects.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="member" className="gap-2">
-              <Users className="h-4 w-4" />
-              Joined Teams
-              {myMemberships && myMemberships.length > 0 && (
-                <Badge variant="secondary" className="ml-1">
-                  {myMemberships.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="applications" className="gap-2" id="applications">
-              <Mail className="h-4 w-4" />
-              Applications
-              {pendingApplications && pendingApplications.length > 0 && (
-                <Badge variant="default" className="ml-1">
-                  {pendingApplications.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
+        <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
+          <aside className="rounded-lg border border-border bg-card p-2 lg:sticky lg:top-24 lg:self-start">
+            {[
+              { id: "owned", label: "My Projects", detail: "Workspaces you own", icon: FolderOpen, count: myProjects?.length || 0 },
+              { id: "member", label: "Joined Teams", detail: "Workspaces you joined", icon: Users, count: myMemberships?.length || 0 },
+              { id: "applications", label: "Applications", detail: "People asking to join", icon: Mail, count: pendingApplications?.length || 0 },
+            ].map((item) => {
+              const Icon = item.icon
+              const isActive = activeView === item.id
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveView(item.id as typeof activeView)}
+                  className={`flex w-full items-center gap-3 rounded-md px-3 py-3 text-left transition-colors ${
+                    isActive ? "bg-primary text-primary-foreground" : "hover:bg-secondary"
+                  }`}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{item.label}</span>
+                    <span className={`block truncate text-xs ${isActive ? "text-primary-foreground/75" : "text-muted-foreground"}`}>
+                      {item.detail}
+                    </span>
+                  </span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs ${isActive ? "bg-primary-foreground/15" : "bg-secondary text-muted-foreground"}`}>
+                    {item.count}
+                  </span>
+                </button>
+              )
+            })}
+          </aside>
 
-          {/* My Projects Tab */}
-          <TabsContent value="owned">
-            {myProjects && myProjects.length > 0 ? (
-              <div className="space-y-6">
-                {myProjects.map((project) => (
-                  <Card key={project.id}>
-                    <CardHeader>
+          <section className="min-w-0">
+            {activeView === "owned" && (
+              myProjects && myProjects.length > 0 ? (
+                <div className="space-y-4">
+                  {myProjects.map((project) => (
+                    <div key={project.id} className="rounded-lg border border-border bg-card p-4">
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
-                          <CardTitle>{project.title}</CardTitle>
-                          <CardDescription className="mt-1">
-                            {project.description?.slice(0, 100)}
-                            {project.description && project.description.length > 100 && "..."}
-                          </CardDescription>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="truncate text-base font-semibold text-foreground">{project.title}</h2>
+                            <Badge variant={project.status === "recruiting" ? "default" : "secondary"}>{project.status}</Badge>
+                          </div>
+                          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{project.description}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant={project.status === "recruiting" ? "default" : "secondary"}>
-                            {project.status}
-                          </Badge>
                           {project.teams?.[0]?.id && (
-                            <Button asChild size="sm" className="bg-[#5865f2] hover:bg-[#4752c4]">
-                              <Link href={`/team/${project.teams[0].id}`}>
-                                Open Workspace
-                              </Link>
+                            <Button asChild size="sm">
+                              <Link href={`/team/${project.teams[0].id}`}>Open Workspace</Link>
                             </Button>
                           )}
                           <Button asChild size="sm" variant="outline">
@@ -529,216 +524,123 @@ export default function TeamsPage() {
                           </Button>
                         </div>
                       </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
-                        <div>
-                          <p className="mb-2 text-sm font-medium text-muted-foreground">Team Members</p>
-                          <div className="flex items-center gap-2">
-                            {project.teams?.[0]?.team_members?.length > 0 ? (
-                              <>
-                                <div className="flex -space-x-2">
-                                  {project.teams[0].team_members.slice(0, 5).map((member: any) => (
-                                    <Avatar key={member.id} className="h-8 w-8 border-2 border-background">
-                                      <AvatarImage src={member.user?.avatar_url || ""} />
-                                      <AvatarFallback className="bg-primary/10 text-xs text-primary">
-                                        {member.user?.full_name?.[0]?.toUpperCase() || "U"}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                  ))}
-                                </div>
-                                <span className="text-sm text-muted-foreground">
-                                  {project.teams[0].team_members.length} member{project.teams[0].team_members.length > 1 ? "s" : ""}
-                                </span>
-                              </>
-                            ) : (
-                              <span className="text-sm text-muted-foreground">No team members yet</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="lg:text-right">
-                          <p className="text-sm text-muted-foreground">Looking for:</p>
-                          <div className="mt-1 flex flex-wrap justify-end gap-1">
-                            {project.required_roles.slice(0, 3).map((role: string, index: number) => (
-                              <Badge key={index} variant="outline" className="text-xs">
-                                {role}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-4 rounded-lg bg-secondary/50 p-3 text-sm">
-                        <span className="font-medium text-foreground">Next step: </span>
-                        <span className="text-muted-foreground">
-                          {project.teams?.[0]?.team_members?.length > 0
-                            ? "Open the workspace and align on the first-week plan."
-                            : "Review applications or share this project to find the first teammate."}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <h3 className="mt-4 font-semibold text-foreground">No projects yet</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Create your first project and start building a team
-                  </p>
-                  <Button asChild className="mt-4">
-                    <Link href="/create">Create Project</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
 
-          {/* Joined Teams Tab */}
-          <TabsContent value="member">
-            {myMemberships && myMemberships.length > 0 ? (
-              <div className="space-y-4">
-                {myMemberships.map((membership) => (
-                  <Card key={membership.id}>
-                    <CardContent className="py-4">
+                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-md bg-secondary/50 p-3">
+                          <p className="text-xs text-muted-foreground">Team</p>
+                          <p className="mt-1 text-sm font-medium text-foreground">
+                            {project.teams?.[0]?.team_members?.length || 0} members
+                          </p>
+                        </div>
+                        <div className="rounded-md bg-secondary/50 p-3 sm:col-span-2">
+                          <p className="text-xs text-muted-foreground">Next step</p>
+                          <p className="mt-1 text-sm text-foreground">
+                            {project.teams?.[0]?.team_members?.length > 0
+                              ? "Open the workspace and align on the first-week plan."
+                              : "Review applications or share this project to find the first teammate."}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border p-10 text-center">
+                  <FolderOpen className="mx-auto h-10 w-10 text-muted-foreground" />
+                  <h3 className="mt-3 font-semibold text-foreground">No projects yet</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">Create your first project and start building a team.</p>
+                  <Button asChild className="mt-4"><Link href="/create">Create Project</Link></Button>
+                </div>
+              )
+            )}
+
+            {activeView === "member" && (
+              myMemberships && myMemberships.length > 0 ? (
+                <div className="space-y-3">
+                  {myMemberships.map((membership) => (
+                    <div key={membership.id} className="rounded-lg border border-border bg-card p-4">
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-4">
-                          <Avatar className="h-12 w-12">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
                             <AvatarImage src={membership.team?.project?.owner?.avatar_url || ""} />
                             <AvatarFallback className="bg-primary/10 text-primary">
                               {membership.team?.project?.owner?.full_name?.[0]?.toUpperCase() || "P"}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <Link
-                              href={`/project/${membership.team?.project?.id}`}
-                              className="font-semibold text-foreground hover:text-primary"
-                            >
+                            <Link href={`/project/${membership.team?.project?.id}`} className="font-semibold text-foreground hover:text-primary">
                               {membership.team?.project?.title}
                             </Link>
-                            {membership.team?.id && (
-                              <Link
-                                href={`/team/${membership.team.id}`}
-                                className="ml-2 text-xs text-[#5865f2] hover:underline"
-                              >
-                                Open Workspace →
-                              </Link>
-                            )}
-                            <p className="text-sm text-muted-foreground">
-                              Your role: <span className="font-medium">{membership.role}</span>
-                            </p>
+                            <p className="text-sm text-muted-foreground">Your role: {membership.role}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           <Badge variant="secondary">{membership.team?.project?.status}</Badge>
-                          <Button asChild size="sm" variant="outline">
-                            <Link href={`/project/${membership.team?.project?.id}`}>
-                              View Project
-                            </Link>
-                          </Button>
+                          {membership.team?.id && (
+                            <Button asChild size="sm"><Link href={`/team/${membership.team.id}`}>Open Workspace</Link></Button>
+                          )}
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Users className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <h3 className="mt-4 font-semibold text-foreground">Not in any teams yet</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Find projects that match your skills and apply to join
-                  </p>
-                  <Button asChild className="mt-4">
-                    <Link href="/explore">Explore Projects</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border p-10 text-center">
+                  <Users className="mx-auto h-10 w-10 text-muted-foreground" />
+                  <h3 className="mt-3 font-semibold text-foreground">Not in any teams yet</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">Find projects that match your skills and apply to join.</p>
+                  <Button asChild className="mt-4"><Link href="/explore">Explore Projects</Link></Button>
+                </div>
+              )
             )}
-          </TabsContent>
 
-          {/* Applications Tab */}
-          <TabsContent value="applications">
-            {pendingApplications && pendingApplications.length > 0 ? (
-              <div className="space-y-4">
-                {pendingApplications.map((application) => (
-                  <Card key={application.id}>
-                    <CardContent className="py-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                          <Avatar className="h-12 w-12">
+            {activeView === "applications" && (
+              pendingApplications && pendingApplications.length > 0 ? (
+                <div className="space-y-3">
+                  {pendingApplications.map((application) => (
+                    <div key={application.id} className="rounded-lg border border-border bg-card p-4">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex items-start gap-3">
+                          <Avatar className="h-10 w-10">
                             <AvatarImage src={application.user?.avatar_url || ""} />
                             <AvatarFallback className="bg-primary/10 text-primary">
                               {application.user?.full_name?.[0]?.toUpperCase() || "U"}
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-semibold text-foreground">
-                              {application.user?.full_name || "Anonymous"}
-                            </p>
+                            <p className="font-semibold text-foreground">{application.user?.full_name || "Anonymous"}</p>
                             <p className="text-sm text-muted-foreground">
-                              Applied for <span className="font-medium">{application.role_applied}</span>
-                              {" "}in <span className="font-medium">{application.project?.title}</span>
+                              Applied for <span className="font-medium">{application.role_applied}</span> in <span className="font-medium">{application.project?.title}</span>
                             </p>
                             <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                               <Clock className="h-3 w-3" />
                               {formatDistanceToNow(new Date(application.created_at), { addSuffix: true })}
                             </div>
-                            {application.user?.skills && application.user.skills.length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                {application.user.skills.slice(0, 4).map((skill: string, index: number) => (
-                                  <Badge key={index} variant="secondary" className="text-xs">
-                                    {skill}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setSelectedApplication(application)}
-                          >
-                            View
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleApplicationResponse(application.id, false)}
-                            disabled={isProcessing}
-                          >
+                          <Button size="sm" variant="outline" onClick={() => setSelectedApplication(application)}>View</Button>
+                          <Button size="sm" variant="outline" onClick={() => handleApplicationResponse(application.id, false)} disabled={isProcessing}>
                             <X className="h-4 w-4" />
                           </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleApplicationResponse(application.id, true)}
-                            disabled={isProcessing}
-                          >
+                          <Button size="sm" onClick={() => handleApplicationResponse(application.id, true)} disabled={isProcessing}>
                             <Check className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Mail className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <h3 className="mt-4 font-semibold text-foreground">No pending applications</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    When people apply to your projects, they'll appear here
-                  </p>
-                </CardContent>
-              </Card>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border p-10 text-center">
+                  <Mail className="mx-auto h-10 w-10 text-muted-foreground" />
+                  <h3 className="mt-3 font-semibold text-foreground">No pending applications</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">When people apply to your projects, they will appear here.</p>
+                </div>
+              )
             )}
-          </TabsContent>
-        </Tabs>
+          </section>
+        </div>
 
         {/* Application Detail Dialog */}
         <Dialog open={!!selectedApplication} onOpenChange={() => setSelectedApplication(null)}>

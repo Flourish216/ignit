@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Calendar, ArrowRight } from "lucide-react"
@@ -43,70 +43,58 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <Link href={`/project/${project.id}`}>
-      <Card className="group h-full transition-all hover:border-primary/50 hover:shadow-md">
-        <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
+      <Card className="group h-full border-border/80 transition-colors hover:border-primary/40">
+        <CardContent className="flex h-full flex-col p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
               <h3 className="line-clamp-2 font-semibold text-foreground group-hover:text-primary">
                 {project.title}
               </h3>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <Badge variant={status.variant}>{status.label}</Badge>
-              </div>
+              <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{oneLiner}</p>
             </div>
+            <Badge variant={status.variant} className="shrink-0">
+              {status.label}
+            </Badge>
           </div>
-        </CardHeader>
-
-        <CardContent className="pb-3">
-          <p className="line-clamp-3 text-sm text-muted-foreground">
-            {oneLiner}
-          </p>
 
           {roles.length > 0 && (
-            <div className="mt-4">
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Looking for:</p>
-              <div className="flex flex-wrap gap-1">
-                {roles.slice(0, 3).map((role, index) => (
-                  <Badge key={index} variant="secondary" className="text-xs">
-                    {role}
-                  </Badge>
-                ))}
-                {roles.length > 3 && (
-                  <Badge variant="secondary" className="text-xs">
-                    +{roles.length - 3} more
-                  </Badge>
-                )}
-              </div>
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              {roles.slice(0, 3).map((role, index) => (
+                <Badge key={index} variant="secondary" className="text-xs">
+                  {role}
+                </Badge>
+              ))}
+              {roles.length > 3 && (
+                <Badge variant="outline" className="text-xs">
+                  +{roles.length - 3}
+                </Badge>
+              )}
             </div>
           )}
 
-        </CardContent>
-
-        <CardFooter className="flex items-center justify-between border-t border-border pt-4">
-          <div className="flex items-center gap-3">
-            {project.owner && (
-              <div className="flex items-center gap-2">
+          <div className="mt-auto flex items-center justify-between gap-3 pt-5">
+            {project.owner ? (
+              <div className="flex min-w-0 items-center gap-2">
                 <Avatar className="h-6 w-6">
                   <AvatarImage src={project.owner.avatar_url || ""} />
                   <AvatarFallback className="bg-primary/10 text-xs text-primary">
                     {project.owner.full_name?.[0]?.toUpperCase() || "U"}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-xs text-muted-foreground">
+                <span className="truncate text-xs text-muted-foreground">
                   {project.owner.full_name || "Anonymous"}
                 </span>
               </div>
+            ) : (
+              <span />
             )}
-          </div>
-
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
+            <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
               <Calendar className="h-3 w-3" />
               {formatDistanceToNow(new Date(project.created_at), { addSuffix: true })}
+              <ArrowRight className="h-4 w-4 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
             </div>
-            <ArrowRight className="h-4 w-4 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
           </div>
-        </CardFooter>
+        </CardContent>
       </Card>
     </Link>
   )

@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   User,
   MapPin,
@@ -474,83 +473,86 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Projects Tabs */}
-        <Tabs defaultValue="my-projects">
-          <TabsList className="w-full justify-start">
-            <TabsTrigger value="my-projects" className="gap-2">
-              <FolderOpen className="h-4 w-4" />
-              My Projects
-            </TabsTrigger>
-            <TabsTrigger value="joined" className="gap-2">
-              <Users className="h-4 w-4" />
-              Joined Teams
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="my-projects" className="mt-6">
+        <div className="space-y-8">
+          <section>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <FolderOpen className="h-4 w-4 text-primary" />
+                  Projects I started
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">Ideas you turned into public project briefs.</p>
+              </div>
+              <Badge variant="secondary">{myProjects?.length || 0}</Badge>
+            </div>
             {myProjects && myProjects.length > 0 ? (
-              <div className="grid gap-6 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 {myProjects.map((project) => (
                   <ProjectCard key={project.id} project={project} />
                 ))}
               </div>
             ) : (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <h3 className="mt-4 font-semibold text-foreground">No projects yet</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Start your first project and find collaborators
-                  </p>
-                  <Button asChild className="mt-4">
-                    <Link href="/create">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Project
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
+              <div className="rounded-lg border border-dashed border-border p-8 text-center">
+                <FolderOpen className="mx-auto h-10 w-10 text-muted-foreground" />
+                <h3 className="mt-3 font-semibold text-foreground">No projects yet</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Start your first project and find collaborators.</p>
+                <Button asChild className="mt-4">
+                  <Link href="/create">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Project
+                  </Link>
+                </Button>
+              </div>
             )}
-          </TabsContent>
+          </section>
 
-          <TabsContent value="joined" className="mt-6">
+          <section>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <Users className="h-4 w-4 text-primary" />
+                  Teams I joined
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">Projects where you are part of the working team.</p>
+              </div>
+              <Badge variant="secondary">{joinedTeams?.length || 0}</Badge>
+            </div>
             {joinedTeams && joinedTeams.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {joinedTeams.map((membership) => (
-                  <Card key={membership.id}>
-                    <CardContent className="py-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <Link
-                            href={`/project/${membership.team?.project?.id}`}
-                            className="font-semibold text-foreground hover:text-primary"
-                          >
-                            {membership.team?.project?.title}
-                          </Link>
-                          <p className="text-sm text-muted-foreground">{membership.role}</p>
-                        </div>
-                        <Badge variant="secondary">{membership.team?.project?.status}</Badge>
+                  <div key={membership.id} className="rounded-lg border border-border bg-card p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <Link
+                          href={`/project/${membership.team?.project?.id}`}
+                          className="font-semibold text-foreground hover:text-primary"
+                        >
+                          {membership.team?.project?.title}
+                        </Link>
+                        <p className="mt-1 text-sm text-muted-foreground">{membership.role}</p>
                       </div>
-                    </CardContent>
-                  </Card>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary">{membership.team?.project?.status}</Badge>
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={`/project/${membership.team?.project?.id}`}>Open</Link>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Users className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <h3 className="mt-4 font-semibold text-foreground">Not in any teams yet</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Explore projects and join teams that match your skills
-                  </p>
-                  <Button asChild className="mt-4">
-                    <Link href="/explore">Explore Projects</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+              <div className="rounded-lg border border-dashed border-border p-8 text-center">
+                <Users className="mx-auto h-10 w-10 text-muted-foreground" />
+                <h3 className="mt-3 font-semibold text-foreground">Not in any teams yet</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Explore projects and join teams that match your skills.</p>
+                <Button asChild className="mt-4">
+                  <Link href="/explore">Explore Projects</Link>
+                </Button>
+              </div>
             )}
-          </TabsContent>
-        </Tabs>
+          </section>
+        </div>
       </main>
     </div>
   )

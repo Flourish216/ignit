@@ -6,7 +6,6 @@ import { ProjectCard } from "@/components/project-card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Search, Filter, Plus, Loader2, Sparkles } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import useSWR from "swr"
@@ -143,15 +142,21 @@ export default function ExplorePage() {
                 className="pl-10"
               />
             </div>
-            <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-              <TabsList>
-                {statusFilters.map((filter) => (
-                  <TabsTrigger key={filter.value} value={filter.value}>
-                    {filter.label}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </Tabs>
+            <div className="flex rounded-lg border border-border bg-card p-1">
+              {statusFilters.map((filter) => (
+                <button
+                  key={filter.value}
+                  onClick={() => setStatusFilter(filter.value)}
+                  className={`rounded-md px-3 py-2 text-sm transition-colors ${
+                    statusFilter === filter.value
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  }`}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Skill Filters */}
