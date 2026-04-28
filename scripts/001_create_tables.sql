@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS public.projects (
   original_idea TEXT NOT NULL,
   ai_breakdown JSONB DEFAULT '{}',
   required_roles JSONB DEFAULT '[]',
-  status TEXT DEFAULT 'open' CHECK (status IN ('open', 'in_progress', 'completed', 'archived')),
+  status TEXT DEFAULT 'recruiting' CHECK (status IN ('recruiting', 'in_progress', 'completed', 'archived')),
   owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   tags TEXT[] DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW(),

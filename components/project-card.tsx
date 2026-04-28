@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Users, Calendar, ArrowRight } from "lucide-react"
+import { Users, Calendar, ArrowRight, Sparkles } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 
 interface ProjectCardProps {
@@ -13,8 +13,14 @@ interface ProjectCardProps {
     title: string
     description: string | null
     required_roles: string[]
+    ai_breakdown?: {
+      one_liner?: string
+      roles?: Array<{ title: string; skills?: string[] }>
+    } | null
     status: string
     created_at: string
+    matchReasons?: string[]
+    matchedSkills?: string[]
     owner: {
       id: string
       full_name: string | null
@@ -34,6 +40,8 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 
 export function ProjectCard({ project }: ProjectCardProps) {
   const status = statusConfig[project.status] || statusConfig.draft
+  const oneLiner = project.ai_breakdown?.one_liner || project.description || "No description provided"
+  const roles = project.ai_breakdown?.roles?.map((role) => role.title) || project.required_roles || []
 
   return (
     <Link href={`/project/${project.id}`}>
@@ -44,32 +52,49 @@ export function ProjectCard({ project }: ProjectCardProps) {
               <h3 className="line-clamp-2 font-semibold text-foreground group-hover:text-primary">
                 {project.title}
               </h3>
-              <Badge variant={status.variant} className="mt-2">
-                {status.label}
-              </Badge>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Badge variant={status.variant}>{status.label}</Badge>
+                {project.matchReasons && project.matchReasons.length > 0 && (
+                  <Badge variant="outline" className="gap-1 border-primary/40 text-primary">
+                    <Sparkles className="h-3 w-3" />
+                    Good fit for you
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="pb-3">
-          <p className="line-clamp-2 text-sm text-muted-foreground">
-            {project.description || "No description provided"}
+          <p className="line-clamp-3 text-sm text-muted-foreground">
+            {oneLiner}
           </p>
 
-          {project.required_roles.length > 0 && (
+          {roles.length > 0 && (
             <div className="mt-4">
               <p className="mb-2 text-xs font-medium text-muted-foreground">Looking for:</p>
               <div className="flex flex-wrap gap-1">
-                {project.required_roles.slice(0, 3).map((role, index) => (
+                {roles.slice(0, 3).map((role, index) => (
                   <Badge key={index} variant="secondary" className="text-xs">
                     {role}
                   </Badge>
                 ))}
-                {project.required_roles.length > 3 && (
+                {roles.length > 3 && (
                   <Badge variant="secondary" className="text-xs">
-                    +{project.required_roles.length - 3} more
+                    +{roles.length - 3} more
                   </Badge>
                 )}
+              </div>
+            </div>
+          )}
+
+          {project.matchReasons && project.matchReasons.length > 0 && (
+            <div className="mt-4 rounded-lg bg-primary/5 p-3">
+              <p className="text-xs font-medium text-primary">Why it matches</p>
+              <div className="mt-1 space-y-1">
+                {project.matchReasons.slice(0, 2).map((reason, index) => (
+                  <p key={index} className="text-xs text-muted-foreground">{reason}</p>
+                ))}
               </div>
             </div>
           )}

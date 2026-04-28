@@ -41,6 +41,8 @@ import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
 import { useRouter, useParams } from "next/navigation"
 import { ProjectChat } from "@/components/project-chat"
+import { MatchCard } from "@/components/match-card"
+import { StartPlanChecklist } from "@/components/start-plan-checklist"
 
 interface ProjectBreakdown {
   one_liner: string
@@ -113,7 +115,7 @@ export default function ProjectDetailPage() {
     async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, avatar_url, bio")
+        .select("id, full_name, avatar_url, bio, skills, interests, current_goals, availability, location")
         .eq("id", project!.owner_id)
         .single()
       
@@ -154,9 +156,10 @@ export default function ProjectDetailPage() {
 
       // Fetch profiles that have any matching skill (exclude self and owner)
       const excludeIds = [user.id, project.owner_id].filter(Boolean)
+      const projectText = `${project.title} ${project.description || ""} ${breakdown?.one_liner || ""} ${breakdown?.problem || ""}`.toLowerCase()
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, full_name, avatar_url, bio, skills")
+        .select("id, full_name, avatar_url, bio, skills, interests, current_goals, availability, location")
         .not("id", "in", `(${excludeIds.join(",")})`)
         .not("skills", "is", null)
 
@@ -167,16 +170,26 @@ export default function ProjectDetailPage() {
       const scored = profiles
         .map((p) => {
           const userSkills: string[] = Array.isArray(p.skills) ? p.skills : []
+          const userInterests: string[] = Array.isArray(p.interests) ? p.interests : []
           const matchCount = userSkills.filter((s) =>
             normalizedRequired.some(
               (r) => r.includes(s.toLowerCase()) || s.toLowerCase().includes(r)
             )
           ).length
-          return { ...p, matchCount, matchedSkills: userSkills.filter((s) =>
+          const matchedSkills = userSkills.filter((s) =>
             normalizedRequired.some(
               (r) => r.includes(s.toLowerCase()) || s.toLowerCase().includes(r)
             )
-          )}
+          )
+          const matchedInterests = userInterests.filter((interest) => projectText.includes(interest.toLowerCase()))
+          const matchReasons = [
+            ...(matchedSkills.length ? [`${matchedSkills.length} required skill match${matchedSkills.length > 1 ? "es" : ""}: ${matchedSkills.slice(0, 3).join(", ")}`] : []),
+            ...(matchedInterests.length ? [`Interest overlap: ${matchedInterests.slice(0, 2).join(", ")}`] : []),
+            ...(p.current_goals ? [`Goal: ${p.current_goals}`] : []),
+            ...(p.availability ? [`Available: ${p.availability.replace(/-/g, " ")}`] : []),
+            ...(p.location ? [`Location: ${p.location}`] : []),
+          ]
+          return { ...p, matchCount: matchCount + matchedInterests.length, matchedSkills, matchedInterests, matchReasons }
         })
         .filter((p) => p.matchCount > 0)
         .sort((a, b) => b.matchCount - a.matchCount)
@@ -469,28 +482,6 @@ export default function ProjectDetailPage() {
               </Card>
             )}
 
-            {/* First Week */}
-            {breakdown?.first_week && Array.isArray(breakdown.first_week) && breakdown.first_week.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-blue-500" />
-                    First Week Plan
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-3 sm:grid-cols-7">
-                    {breakdown.first_week.map((day, index) => (
-                      <div key={index} className="rounded-lg bg-secondary/50 p-3 text-center">
-                        <div className="text-xs font-medium text-primary">{day.day}</div>
-                        <div className="mt-1 text-xs text-muted-foreground line-clamp-3">{day.goal}</div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             {/* Milestones */}
             {breakdown?.milestones && Array.isArray(breakdown.milestones) && (
               <Card>
@@ -554,6 +545,14 @@ export default function ProjectDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {breakdown?.first_week && Array.isArray(breakdown.first_week) && breakdown.first_week.length > 0 && (
+              <StartPlanChecklist
+                items={breakdown.first_week}
+                title="Start Plan"
+                storageKey={`project-start-plan-${id}`}
+              />
+            )}
+
             {/* Required Roles */}
             <Card>
               <CardHeader>
@@ -716,6 +715,33 @@ export default function ProjectDetailPage() {
               </CardContent>
             </Card>
 
+            {/* Suggested People (Human Matching) */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  People Match
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Based on skills, interests, goals, availability, and location
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {suggestedPeople && suggestedPeople.length > 0 ? (
+                  suggestedPeople.map((person) => (
+                    <MatchCard key={person.id} person={person} compact />
+                  ))
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border p-4 text-center">
+                    <p className="text-sm font-medium text-foreground">No strong matches yet</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Matches improve as builders add skills, interests, goals, and availability.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Team Chat */}
             <ProjectChat
               projectId={id}
@@ -742,56 +768,6 @@ export default function ProjectDetailPage() {
                         <div>
                           <p className="text-sm font-medium">{member.user?.full_name || "Anonymous"}</p>
                           <p className="text-xs text-muted-foreground">{member.role}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            {/* Suggested People (Human Matching) */}
-            {suggestedPeople && suggestedPeople.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Sparkles className="h-4 w-4 text-primary" />
-                    Suggested People
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Based on required skills
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {suggestedPeople.map((person) => (
-                      <div key={person.id} className="flex items-start gap-3">
-                        <Avatar className="h-9 w-9 shrink-0">
-                          <AvatarImage src={person.avatar_url || ""} />
-                          <AvatarFallback className="bg-primary/10 text-xs text-primary">
-                            {person.full_name?.[0]?.toUpperCase() || "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">
-                            {person.full_name || "Anonymous"}
-                          </p>
-                          {person.bio && (
-                            <p className="line-clamp-1 text-xs text-muted-foreground">
-                              {person.bio}
-                            </p>
-                          )}
-                          <div className="mt-1.5 flex flex-wrap gap-1">
-                            {person.matchedSkills.slice(0, 3).map((skill: string, i: number) => (
-                              <Badge key={i} variant="secondary" className="text-[10px]">
-                                {skill}
-                              </Badge>
-                            ))}
-                            {person.matchCount > 3 && (
-                              <Badge variant="outline" className="text-[10px]">
-                                +{person.matchCount - 3}
-                              </Badge>
-                            )}
-                          </div>
                         </div>
                       </div>
                     ))}

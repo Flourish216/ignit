@@ -7,10 +7,11 @@ import { IdeaInput } from "@/components/idea-input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Sparkles, CheckCircle, Users, Target, AlertTriangle, ArrowRight, RefreshCw, Calendar, Download, Edit3, Check } from "lucide-react"
+import { Loader2, Sparkles, CheckCircle, Users, Target, AlertTriangle, ArrowRight, RefreshCw, Edit3 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import useSWR from "swr"
 import { useLanguage } from "@/lib/i18n/context"
+import { StartPlanChecklist } from "@/components/start-plan-checklist"
 
 interface ProjectBreakdown {
   one_liner: string
@@ -306,99 +307,67 @@ function CreateProjectContent() {
 
         {breakdown && (
           <div className="space-y-6">
-            {/* Editable Prompt + Download */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Edit3 className="h-4 w-4 text-muted-foreground" />
-                    {t.create.ideaTitle}
-                  </CardTitle>
+            <div className="rounded-lg border border-border bg-card p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <Badge variant="secondary" className="gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    {t.create.aiGenerated}
+                  </Badge>
+                  <h2 className="mt-3 text-2xl font-bold text-foreground">{t.create.reviewTitle}</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">{t.create.reviewSubtitle}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditingIdea(true)}
+                  className="gap-2"
+                >
+                  <Edit3 className="h-4 w-4" />
+                  {t.create.editRegenerate}
+                </Button>
+              </div>
+
+              {isEditingIdea && (
+                <div className="mt-5 space-y-3">
+                  <textarea
+                    value={editableIdea}
+                    onChange={(e) => setEditableIdea(e.target.value)}
+                    className="min-h-[100px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    placeholder={t.create.editPlaceholder}
+                  />
                   <div className="flex flex-col gap-2 sm:flex-row">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={downloadProjectPlan}
-                      className="gap-1.5"
-                    >
-                      <Download className="h-4 w-4" />
-                      {t.create.downloadPlan}
+                    <Button onClick={handleRegenerate} disabled={isAnalyzing || !editableIdea.trim()}>
+                      {isAnalyzing ? t.create.generating : t.create.regenerate}
                     </Button>
-                    {!isEditingIdea ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setIsEditingIdea(true)}
-                        className="gap-1.5"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                        {t.create.editRegenerate}
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        onClick={handleRegenerate}
-                        disabled={isAnalyzing}
-                        className="gap-1.5"
-                      >
-                        <Sparkles className="h-4 w-4" />
-                        {t.create.regenerate}
-                      </Button>
-                    )}
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        setEditableIdea(idea)
+                        setIsEditingIdea(false)
+                      }}
+                    >
+                      {t.create.cancel}
+                    </Button>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                {isEditingIdea ? (
-                  <div className="space-y-3">
-                    <textarea
-                      value={editableIdea}
-                      onChange={(e) => setEditableIdea(e.target.value)}
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px] resize-none"
-                      placeholder={t.create.editPlaceholder}
-                    />
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <Button
-                        size="sm"
-                        onClick={handleRegenerate}
-                        disabled={isAnalyzing || !editableIdea.trim()}
-                      >
-                        {isAnalyzing ? t.create.generating : t.create.generateNewPlan}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditableIdea(idea)
-                          setIsEditingIdea(false)
-                        }}
-                      >
-                        {t.create.cancel}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">{idea}</p>
-                )}
-              </CardContent>
-            </Card>
+              )}
+            </div>
 
-            {/* Project Overview - One Liner */}
-            {breakdown.one_liner && (
-              <Card className="border-primary/20 bg-primary/5">
-                <CardContent className="py-6">
-                  <div className="flex items-start gap-3">
-                    <Sparkles className="mt-1 h-5 w-5 shrink-0 text-primary" />
-                    <div>
-                      <h3 className="font-medium text-foreground">{breakdown.one_liner}</h3>
-                    </div>
+            <Card className="border-primary/20">
+              <CardHeader>
+                <CardTitle className="text-2xl">{breakdown.title}</CardTitle>
+                <CardDescription>{breakdown.description}</CardDescription>
+              </CardHeader>
+              {breakdown.one_liner && (
+                <CardContent className="pt-0">
+                  <div className="rounded-lg bg-primary/5 p-4 text-sm font-medium text-foreground">
+                    {breakdown.one_liner}
                   </div>
                 </CardContent>
-              </Card>
-            )}
+              )}
+            </Card>
 
-            {/* Problem & Target Users */}
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2">
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">{t.create.problemTitle}</CardTitle>
@@ -417,12 +386,36 @@ function CreateProjectContent() {
               </Card>
             </div>
 
-            {/* MVP */}
-            {breakdown.mvp && breakdown.mvp.length > 0 && (
+            <div className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Target className="h-5 w-5 text-green-500" />
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Users className="h-4 w-4 text-primary" />
+                    {t.create.rolesTitle}
+                  </CardTitle>
+                  <CardDescription>{t.create.rolesDescription}</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-3 sm:grid-cols-2">
+                  {breakdown.roles.map((role, index) => (
+                    <div key={index} className="rounded-lg border border-border p-3">
+                      <h4 className="text-sm font-medium text-foreground">{role.title}</h4>
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{role.description}</p>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {role.skills.slice(0, 4).map((skill, skillIndex) => (
+                          <Badge key={skillIndex} variant="secondary" className="text-[10px]">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Target className="h-4 w-4 text-green-500" />
                     {t.create.mvpTitle}
                   </CardTitle>
                 </CardHeader>
@@ -437,165 +430,31 @@ function CreateProjectContent() {
                   </ul>
                 </CardContent>
               </Card>
-            )}
+            </div>
 
-            {/* First Week Plan */}
-            {breakdown.first_week && breakdown.first_week.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-blue-500" />
-                    {t.create.firstWeekTitle}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-3 sm:grid-cols-7">
-                    {breakdown.first_week.map((day, index) => (
-                      <div key={index} className="rounded-lg bg-secondary/50 p-3 text-center">
-                        <div className="text-xs font-medium text-primary">{day.day}</div>
-                        <div className="mt-1 text-xs text-muted-foreground line-clamp-3">{day.goal}</div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            <StartPlanChecklist
+              items={breakdown.first_week || []}
+              title={t.create.firstWeekTitle}
+              storageKey={`create-preview-${idea}`}
+            />
 
-            {/* Project Overview */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-2xl">{breakdown.title}</CardTitle>
-                    <CardDescription className="mt-2">{breakdown.description}</CardDescription>
-                  </div>
-                  <Badge variant="secondary" className="flex items-center gap-1">
-                    <Sparkles className="h-3 w-3" />
-                    {t.create.aiGenerated}
-                  </Badge>
-                </div>
-              </CardHeader>
-            </Card>
-
-            {/* Milestones */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-primary" />
-                  {t.create.milestonesTitle}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {breakdown.milestones.map((milestone, index) => (
-                    <div
-                      key={index}
-                      className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-start sm:gap-4"
-                    >
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <h4 className="font-medium text-foreground">{milestone.name}</h4>
-                          <Badge variant="outline">{milestone.timeframe}</Badge>
-                        </div>
-                        <p className="mt-1 text-sm text-muted-foreground">{milestone.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Required Roles */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-primary" />
-                  {t.create.rolesTitle}
-                </CardTitle>
-                <CardDescription>
-                  {t.create.rolesDescription}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {breakdown.roles.map((role, index) => (
-                    <div
-                      key={index}
-                      className="rounded-lg border border-border p-4"
-                    >
-                      <h4 className="font-medium text-foreground">{role.title}</h4>
-                      <p className="mt-1 text-sm text-muted-foreground">{role.description}</p>
-                      <div className="mt-3 flex flex-wrap gap-1">
-                        {role.skills.map((skill, skillIndex) => (
-                          <Badge key={skillIndex} variant="secondary" className="text-xs">
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Challenges */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-amber-500" />
-                  {t.create.challengesTitle}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {breakdown.challenges.map((item, index) => (
-                    <div key={index} className="rounded-lg bg-secondary/50 p-4">
-                      <h4 className="font-medium text-foreground">{item.challenge}</h4>
-                      <div className="mt-2 flex items-start gap-2">
-                        <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
-                        <p className="text-sm text-muted-foreground">{item.solution}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Actions */}
-            <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-6 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h3 className="font-semibold text-foreground">{t.create.readyTitle}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {t.create.readyDescription}
-                </p>
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setBreakdown(null)
-                    setIdea("")
-                  }}
-                >
-                  {t.create.startOver}
-                </Button>
-                <Button onClick={handleCreateProject} disabled={isCreating}>
-                  {isCreating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {t.create.creating}
-                    </>
-                  ) : (
-                    <>
-                      {t.create.createProject}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-              </div>
+            <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-end">
+              <Button variant="outline" onClick={handleRegenerate} disabled={isAnalyzing || !editableIdea.trim()}>
+                {t.create.regenerate}
+              </Button>
+              <Button onClick={handleCreateProject} disabled={isCreating}>
+                {isCreating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t.create.creating}
+                  </>
+                ) : (
+                  <>
+                    {t.create.createProject}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
+              </Button>
             </div>
           </div>
         )}

@@ -6,6 +6,15 @@ export const translations = {
     hero: { badge: 'Human-first, AI-assisted', title: 'Turn your ideas into', titleHighlight: 'collaborative projects', description: 'Describe what you want to build. Our AI will help break it down into actionable tasks.' },
     features: { title: 'How it works', subtitle: 'From idea to reality in four simple steps', shareIdea: { title: 'Share Your Idea', description: 'Describe your project in plain language.' }, aiBreakdown: { title: 'AI Breakdown', description: 'Our AI analyzes your idea and creates a plan.' }, findTeam: { title: 'Find Your Team', description: 'Connect with talented people.' }, buildTogether: { title: 'Build Together', description: 'Work together in dedicated team spaces.' } },
     cta: { title: 'Ready to start building?', subtitle: 'Join thousands of creators turning their ideas into reality', exploreProjects: 'Explore Projects', createAccount: 'Create Account' },
+    mainline: {
+      title: 'Capture an idea. Find the right people. Start moving.',
+      subtitle: 'Drop a rough thought here. Ignit turns it into a clear project brief, suggested collaborators, and a first-week start plan.',
+      steps: [
+        { title: 'Clarify the idea', description: 'AI turns a rough thought into a project brief people can understand.' },
+        { title: 'Find people', description: 'Match against builder skills, interests, goals, availability, and location.' },
+        { title: 'Start together', description: 'Apply, accept teammates, open the workspace, and follow the first steps.' },
+      ],
+    },
     ideaInput: {
       placeholder: 'Describe your project idea in one sentence...',
       helper: 'AI will break down your idea and suggest team roles',
@@ -24,6 +33,8 @@ export const translations = {
       signInButton: 'Sign In',
       title: 'Create a New Project',
       subtitle: 'Describe your idea and let AI help you plan it out',
+      reviewTitle: 'Project Brief Review',
+      reviewSubtitle: 'Check the brief, regenerate if needed, then publish it so people can understand and join.',
       promptTitle: 'What do you want to build?',
       promptDescription: 'Describe your project idea in a sentence or two. Be as specific as possible.',
       promptPlaceholder: 'e.g., A mobile app that helps people track their daily water intake and sends reminders...',
@@ -68,6 +79,15 @@ export const translations = {
     hero: { badge: '以人为本，AI 辅助', title: '将你的创意转化为', titleHighlight: '协作项目', description: '描述你想构建的内容。我们的 AI 将帮助将其分解为可执行的任务。' },
     features: { title: '工作原理', subtitle: '四个简单步骤，从创意到现实', shareIdea: { title: '分享你的创意', description: '用简单的语言描述你的项目。' }, aiBreakdown: { title: 'AI 智能拆解', description: '我们的 AI 分析你的创意，创建项目计划。' }, findTeam: { title: '寻找团队', description: '与优秀人才建立联系。' }, buildTogether: { title: '协作共建', description: '在专属的团队空间中协同工作。' } },
     cta: { title: '准备好开始构建了吗？', subtitle: '加入数千名创作者，将创意变为现实', exploreProjects: '探索项目', createAccount: '创建账户' },
+    mainline: {
+      title: '记录一个想法，找到合适的人，然后真正开始。',
+      subtitle: '先把粗糙念头放进来。Ignit 会把它整理成项目简报、协作者推荐和第一周启动计划。',
+      steps: [
+        { title: '整理想法', description: 'AI 把模糊念头整理成别人能看懂的项目简报。' },
+        { title: '找到人', description: '根据技能、兴趣、目标、时间和地点匹配合适的 builders。' },
+        { title: '一起开始', description: '申请加入、接受队友、打开工作区，并按第一步推进。' },
+      ],
+    },
     ideaInput: {
       placeholder: '用一句话描述你的项目想法...',
       helper: 'AI 会拆解你的想法，并建议需要的团队角色',
@@ -86,6 +106,8 @@ export const translations = {
       signInButton: '登录',
       title: '创建新项目',
       subtitle: '描述你的想法，让 AI 帮你整理成项目计划',
+      reviewTitle: '项目简报确认',
+      reviewSubtitle: '检查 AI 整理后的项目简报，需要时重新生成，然后发布让别人理解并加入。',
       promptTitle: '你想做什么？',
       promptDescription: '用一两句话描述你的项目想法，越具体越好。',
       promptPlaceholder: '例如：一个帮助用户记录每日饮水量并发送提醒的移动应用...',

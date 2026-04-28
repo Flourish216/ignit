@@ -49,7 +49,7 @@ CREATE POLICY "Team members can view channels"
       JOIN teams t ON tm.team_id = t.id
       WHERE t.id = channels.team_id
         AND tm.user_id = auth.uid()
-        AND tm.status = 'active'
+        AND tm.status = 'accepted'
     )
     OR EXISTS (
       SELECT 1 FROM teams t
@@ -73,7 +73,7 @@ CREATE POLICY "Only owners and admins can create channels"
         WHERE tm.team_id = channels.team_id
           AND tm.user_id = auth.uid()
           AND tm.role = 'admin'
-          AND tm.status = 'active'
+          AND tm.status = 'accepted'
       )
     )
   );
@@ -88,7 +88,7 @@ CREATE POLICY "Team members can view messages"
       JOIN team_members tm ON tm.team_id = c.team_id
       WHERE c.id = channel_messages.channel_id
         AND tm.user_id = auth.uid()
-        AND tm.status = 'active'
+        AND tm.status = 'accepted'
     )
     OR EXISTS (
       SELECT 1 FROM channels c
@@ -108,7 +108,7 @@ CREATE POLICY "Team members can send messages"
         JOIN team_members tm ON tm.team_id = c.team_id
         WHERE c.id = channel_messages.channel_id
           AND tm.user_id = auth.uid()
-          AND tm.status = 'active'
+          AND tm.status = 'accepted'
       )
       OR EXISTS (
         SELECT 1 FROM channels c

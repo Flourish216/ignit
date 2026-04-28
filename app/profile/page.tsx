@@ -257,6 +257,13 @@ export default function ProfilePage() {
       <Navigation />
 
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-foreground">Builder Profile</h1>
+          <p className="mt-1 text-muted-foreground">
+            Show what you can do, what you want to build, and when you are available.
+          </p>
+        </div>
+
         {/* Profile Header */}
         <Card className="mb-6">
           <CardContent className="pt-6">
@@ -386,6 +393,27 @@ export default function ProfilePage() {
                           {profile.website.replace(/^https?:\/\//, "")}
                         </a>
                       )}
+                    </div>
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-lg border border-border bg-secondary/30 p-3">
+                        <p className="text-xs font-medium text-muted-foreground">I can help with</p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">
+                          {profile?.skills?.length ? `${profile.skills.length} skills` : "Add skills"}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-secondary/30 p-3">
+                        <p className="text-xs font-medium text-muted-foreground">I want to build</p>
+                        <p className="mt-1 line-clamp-1 text-sm font-semibold text-foreground">
+                          {profile?.current_goals || "Add a goal"}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-border bg-secondary/30 p-3">
+                        <p className="text-xs font-medium text-muted-foreground">Availability</p>
+                        <p className="mt-1 text-sm font-semibold capitalize text-foreground">
+                          {profile?.availability ? profile.availability.replace(/-/g, " ") : "Set availability"}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}

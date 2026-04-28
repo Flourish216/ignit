@@ -359,7 +359,7 @@ export default function TeamsPage() {
       // Update application status
       await supabase
         .from("project_applications")
-        .update({ status: accept ? "accepted" : "rejected" })
+        .update({ status: accept ? "accepted" : "declined" })
         .eq("id", applicationId)
 
       if (accept) {
@@ -391,6 +391,12 @@ export default function TeamsPage() {
             role: application.role_applied,
             status: "accepted",
           })
+
+        await supabase
+          .from("projects")
+          .update({ status: "in_progress" })
+          .eq("id", application.project_id)
+          .eq("status", "recruiting")
       }
 
       // Refresh data
@@ -428,9 +434,9 @@ export default function TeamsPage() {
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">My Teams</h1>
+          <h1 className="text-3xl font-bold text-foreground">Project Start</h1>
           <p className="mt-1 text-muted-foreground">
-            Manage your projects and team collaborations
+            Review applications, open workspaces, and keep accepted teams moving
           </p>
         </div>
 
@@ -496,7 +502,7 @@ export default function TeamsPage() {
                 {myProjects.map((project) => (
                   <Card key={project.id}>
                     <CardHeader>
-                      <div className="flex items-start justify-between">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div>
                           <CardTitle>{project.title}</CardTitle>
                           <CardDescription className="mt-1">
@@ -504,7 +510,7 @@ export default function TeamsPage() {
                             {project.description && project.description.length > 100 && "..."}
                           </CardDescription>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Badge variant={project.status === "recruiting" ? "default" : "secondary"}>
                             {project.status}
                           </Badge>
@@ -525,7 +531,7 @@ export default function TeamsPage() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex items-center justify-between">
+                      <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
                         <div>
                           <p className="mb-2 text-sm font-medium text-muted-foreground">Team Members</p>
                           <div className="flex items-center gap-2">
@@ -550,7 +556,7 @@ export default function TeamsPage() {
                             )}
                           </div>
                         </div>
-                        <div className="text-right">
+                        <div className="lg:text-right">
                           <p className="text-sm text-muted-foreground">Looking for:</p>
                           <div className="mt-1 flex flex-wrap justify-end gap-1">
                             {project.required_roles.slice(0, 3).map((role: string, index: number) => (
@@ -560,6 +566,14 @@ export default function TeamsPage() {
                             ))}
                           </div>
                         </div>
+                      </div>
+                      <div className="mt-4 rounded-lg bg-secondary/50 p-3 text-sm">
+                        <span className="font-medium text-foreground">Next step: </span>
+                        <span className="text-muted-foreground">
+                          {project.teams?.[0]?.team_members?.length > 0
+                            ? "Open the workspace and align on the first-week plan."
+                            : "Review applications or share this project to find the first teammate."}
+                        </span>
                       </div>
                     </CardContent>
                   </Card>
@@ -588,7 +602,7 @@ export default function TeamsPage() {
                 {myMemberships.map((membership) => (
                   <Card key={membership.id}>
                     <CardContent className="py-4">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-4">
                           <Avatar className="h-12 w-12">
                             <AvatarImage src={membership.team?.project?.owner?.avatar_url || ""} />

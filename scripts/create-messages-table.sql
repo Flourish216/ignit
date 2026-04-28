@@ -22,7 +22,7 @@ CREATE POLICY "Anyone can view messages"
   USING (true);
 
 -- RLS 策略：只有项目成员可以发送消息
--- 项目成员包括：owner 和 team_members 表中 status = 'active' 的成员
+-- 项目成员包括：owner 和 team_members 表中 status = 'accepted' 的成员
 CREATE POLICY "Only team members can insert messages"
   ON messages
   FOR INSERT
@@ -33,13 +33,13 @@ CREATE POLICY "Only team members can insert messages"
         SELECT 1 FROM projects WHERE id = project_id AND owner_id = auth.uid()
       )
       OR
-      -- 是 active team member
+      -- 是 accepted team member
       EXISTS (
         SELECT 1 FROM team_members tm
         JOIN teams t ON tm.team_id = t.id
         WHERE t.project_id = messages.project_id
           AND tm.user_id = auth.uid()
-          AND tm.status = 'active'
+          AND tm.status = 'accepted'
       )
     )
   );
