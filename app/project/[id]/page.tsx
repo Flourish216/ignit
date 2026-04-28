@@ -34,13 +34,14 @@ import {
   Loader2,
   Sparkles,
   Trash2,
+  MessageSquare,
+  Hash,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import useSWR, { mutate } from "swr"
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
 import { useRouter, useParams } from "next/navigation"
-import { ProjectChat } from "@/components/project-chat"
 import { MatchCard } from "@/components/match-card"
 import { StartPlanChecklist } from "@/components/start-plan-checklist"
 
@@ -141,6 +142,19 @@ export default function ProjectDetailPage() {
     }
   )
 
+  const { data: projectTeam } = useSWR(
+    id ? ["project-team", id] : null,
+    async () => {
+      if (!id) return null
+      const { data } = await supabase
+        .from("teams")
+        .select("id, name")
+        .eq("project_id", id)
+        .single()
+      return data
+    }
+  )
+
   // Human Matching: find people whose skills overlap with required roles
   const { data: suggestedPeople } = useSWR(
     project && user ? ["suggested-people", id, user.id] : null,
@@ -200,22 +214,15 @@ export default function ProjectDetailPage() {
   )
 
   const { data: teamMembers } = useSWR(
-    id ? ["team-members", id] : null,
+    projectTeam?.id ? ["team-members", projectTeam.id] : null,
     async () => {
-      if (!id) return []
-      const { data: teams } = await supabase
-        .from("teams")
-        .select("id")
-        .eq("project_id", id)
-        .single()
-
-      if (!teams) return []
+      if (!projectTeam?.id) return []
 
       // 查 team_members
       const { data: members, error } = await supabase
         .from("team_members")
         .select("id, user_id, role, status")
-        .eq("team_id", teams.id)
+        .eq("team_id", projectTeam.id)
         .eq("status", "accepted")
 
       if (error) {
@@ -742,12 +749,43 @@ export default function ProjectDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Team Chat */}
-            <ProjectChat
-              projectId={id}
-              userId={user?.id}
-              isMember={isTeamMember}
-            />
+            {/* Team Workspace */}
+            <Card className="border-primary/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                  Team Workspace
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Channels, team chat, and member discussion live here after someone joins the project.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-lg border border-border bg-secondary/40 p-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Hash className="h-4 w-4 text-muted-foreground" />
+                    general
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    The workspace opens once you are the owner or an accepted teammate.
+                  </p>
+                </div>
+
+                {isTeamMember && projectTeam?.id ? (
+                  <Button asChild className="mt-4 w-full">
+                    <Link href={`/team/${projectTeam.id}`}>Open Workspace</Link>
+                  </Button>
+                ) : user ? (
+                  <div className="mt-4 rounded-lg bg-secondary/60 p-3 text-center text-xs text-muted-foreground">
+                    Apply and get accepted to unlock the workspace.
+                  </div>
+                ) : (
+                  <Button asChild className="mt-4 w-full">
+                    <Link href={`/auth/login?redirect=/project/${id}`}>Sign in to join workspace</Link>
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Team Members */}
             {teamMembers && teamMembers.length > 0 && (

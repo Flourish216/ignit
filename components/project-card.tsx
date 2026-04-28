@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Users, Calendar, ArrowRight, Sparkles } from "lucide-react"
+import { Calendar, ArrowRight } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 
 interface ProjectCardProps {
@@ -19,8 +19,6 @@ interface ProjectCardProps {
     } | null
     status: string
     created_at: string
-    matchReasons?: string[]
-    matchedSkills?: string[]
     owner: {
       id: string
       full_name: string | null
@@ -54,12 +52,6 @@ export function ProjectCard({ project }: ProjectCardProps) {
               </h3>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Badge variant={status.variant}>{status.label}</Badge>
-                {project.matchReasons && project.matchReasons.length > 0 && (
-                  <Badge variant="outline" className="gap-1 border-primary/40 text-primary">
-                    <Sparkles className="h-3 w-3" />
-                    Good fit for you
-                  </Badge>
-                )}
               </div>
             </div>
           </div>
@@ -88,16 +80,6 @@ export function ProjectCard({ project }: ProjectCardProps) {
             </div>
           )}
 
-          {project.matchReasons && project.matchReasons.length > 0 && (
-            <div className="mt-4 rounded-lg bg-primary/5 p-3">
-              <p className="text-xs font-medium text-primary">Why it matches</p>
-              <div className="mt-1 space-y-1">
-                {project.matchReasons.slice(0, 2).map((reason, index) => (
-                  <p key={index} className="text-xs text-muted-foreground">{reason}</p>
-                ))}
-              </div>
-            </div>
-          )}
         </CardContent>
 
         <CardFooter className="flex items-center justify-between border-t border-border pt-4">

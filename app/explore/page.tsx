@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Filter, Plus, Loader2, Sparkles, Target } from "lucide-react"
+import { Search, Filter, Plus, Loader2, Sparkles } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import useSWR from "swr"
 import Link from "next/link"
@@ -27,21 +27,6 @@ export default function ExplorePage() {
   const [statusFilter, setStatusFilter] = useState("all")
   const [selectedSkills, setSelectedSkills] = useState<string[]>([])
   const supabase = createClient()
-
-  const { data: user } = useSWR("user", async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    return user
-  })
-
-  const { data: myProfile } = useSWR(user ? `explore-profile-${user.id}` : null, async () => {
-    if (!user) return null
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, skills, interests, current_goals, availability, location")
-      .eq("id", user.id)
-      .single()
-    return data
-  })
 
   const { data: projects, isLoading } = useSWR(
     ["projects", statusFilter, searchQuery],
@@ -99,31 +84,13 @@ export default function ExplorePage() {
   // Combine projects with owner data
   const projectsWithOwners = projects?.map(project => {
     const breakdown = project.ai_breakdown || {}
-    const roleSkills: string[] = Array.isArray(breakdown.roles)
-      ? breakdown.roles.flatMap((role: any) => Array.isArray(role.skills) ? role.skills : [])
-      : []
     const roleTitles: string[] = Array.isArray(breakdown.roles)
       ? breakdown.roles.map((role: any) => role.title).filter(Boolean)
       : Array.isArray(project.required_roles) ? project.required_roles : []
-    const mySkills: string[] = Array.isArray(myProfile?.skills) ? myProfile.skills : []
-    const myInterests: string[] = Array.isArray(myProfile?.interests) ? myProfile.interests : []
-    const normalizedSkills = roleSkills.map((skill) => skill.toLowerCase())
-    const text = `${project.title} ${project.description || ""} ${breakdown.one_liner || ""}`.toLowerCase()
-    const matchedSkills = mySkills.filter((skill) =>
-      normalizedSkills.some((required) => required.includes(skill.toLowerCase()) || skill.toLowerCase().includes(required))
-    )
-    const matchedInterests = myInterests.filter((interest) => text.includes(interest.toLowerCase()))
-    const matchReasons = [
-      ...(matchedSkills.length ? [`${matchedSkills.length} skill match${matchedSkills.length > 1 ? "es" : ""}: ${matchedSkills.slice(0, 3).join(", ")}`] : []),
-      ...(matchedInterests.length ? [`Interest overlap: ${matchedInterests.slice(0, 2).join(", ")}`] : []),
-      ...(myProfile?.availability ? [`Your availability is set to ${myProfile.availability.replace(/-/g, " ")}`] : []),
-    ]
 
     return {
       ...project,
       required_roles: roleTitles,
-      matchReasons: user && user.id !== project.owner_id ? matchReasons : [],
-      matchedSkills,
       owner: ownerProfiles?.[project.owner_id] || null
     }
   })
@@ -162,23 +129,6 @@ export default function ExplorePage() {
             </Link>
           </Button>
         </div>
-
-        {myProfile && (
-          <div className="mt-6 rounded-lg border border-primary/20 bg-primary/5 p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-3">
-                <Target className="mt-0.5 h-5 w-5 text-primary" />
-                <div>
-                  <p className="text-sm font-medium text-foreground">Good fit projects are based on your skills, interests, goals, availability, and location.</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Keep your Builder Profile updated to improve recommendations.</p>
-                </div>
-              </div>
-              <Button asChild variant="outline" size="sm">
-                <Link href="/profile">Edit profile</Link>
-              </Button>
-            </div>
-          </div>
-        )}
 
         {/* Filters */}
         <div className="mt-8 space-y-4">
