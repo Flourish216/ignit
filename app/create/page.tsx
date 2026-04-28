@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Loader2, Sparkles, CheckCircle, Users, Target, AlertTriangle, ArrowRight, RefreshCw, Calendar, Download, Edit3, Check } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import useSWR from "swr"
+import { useLanguage } from "@/lib/i18n/context"
 
 interface ProjectBreakdown {
   one_liner: string
@@ -42,6 +43,7 @@ function CreateProjectContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const supabase = createClient()
+  const { t } = useLanguage()
   
   const initialIdea = searchParams.get("idea") || ""
   const [idea, setIdea] = useState(initialIdea)
@@ -52,14 +54,7 @@ function CreateProjectContent() {
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loadingMessage, setLoadingMessage] = useState(0)
-  const loadingMessages = [
-    "Analyzing your idea...",
-    "Structuring the project...",
-    "Identifying key features...",
-    "Defining team roles...",
-    "Planning the roadmap...",
-    "Almost there...",
-  ]
+  const loadingMessages = t.create.loadingMessages
   const loadingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const { data: user } = useSWR("user", async () => {
@@ -224,12 +219,12 @@ function CreateProjectContent() {
         <main className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
           <Card className="text-center">
             <CardContent className="py-12">
-              <h2 className="text-2xl font-bold text-foreground">Sign in to create a project</h2>
+              <h2 className="text-2xl font-bold text-foreground">{t.create.signInTitle}</h2>
               <p className="mt-2 text-muted-foreground">
-                You need to be signed in to create and manage projects.
+                {t.create.signInDescription}
               </p>
               <Button asChild className="mt-6">
-                <a href="/auth/login?redirect=/create">Sign In</a>
+                <a href="/auth/login?redirect=/create">{t.create.signInButton}</a>
               </Button>
             </CardContent>
           </Card>
@@ -244,9 +239,9 @@ function CreateProjectContent() {
 
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Create a New Project</h1>
+          <h1 className="text-3xl font-bold text-foreground">{t.create.title}</h1>
           <p className="mt-2 text-muted-foreground">
-            Describe your idea and let AI help you plan it out
+            {t.create.subtitle}
           </p>
         </div>
 
@@ -254,15 +249,15 @@ function CreateProjectContent() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>What do you want to build?</CardTitle>
+                <CardTitle>{t.create.promptTitle}</CardTitle>
                 <CardDescription>
-                  Describe your project idea in a sentence or two. Be as specific as possible.
+                  {t.create.promptDescription}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <IdeaInput 
                   showExamples={false} 
-                  placeholder="e.g., A mobile app that helps people track their daily water intake and sends reminders..."
+                  placeholder={t.create.promptPlaceholder}
                 />
               </CardContent>
             </Card>
@@ -303,7 +298,7 @@ function CreateProjectContent() {
                 onClick={() => analyzeIdea(idea)}
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
-                Try Again
+                {t.create.retry}
               </Button>
             </CardContent>
           </Card>
@@ -314,12 +309,12 @@ function CreateProjectContent() {
             {/* Editable Prompt + Download */}
             <Card>
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Edit3 className="h-4 w-4 text-muted-foreground" />
-                    Your Project Idea
+                    {t.create.ideaTitle}
                   </CardTitle>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <Button
                       size="sm"
                       variant="outline"
@@ -327,7 +322,7 @@ function CreateProjectContent() {
                       className="gap-1.5"
                     >
                       <Download className="h-4 w-4" />
-                      Download Plan
+                      {t.create.downloadPlan}
                     </Button>
                     {!isEditingIdea ? (
                       <Button
@@ -337,7 +332,7 @@ function CreateProjectContent() {
                         className="gap-1.5"
                       >
                         <Edit3 className="h-4 w-4" />
-                        Edit & Regenerate
+                        {t.create.editRegenerate}
                       </Button>
                     ) : (
                       <Button
@@ -347,7 +342,7 @@ function CreateProjectContent() {
                         className="gap-1.5"
                       >
                         <Sparkles className="h-4 w-4" />
-                        Regenerate
+                        {t.create.regenerate}
                       </Button>
                     )}
                   </div>
@@ -360,15 +355,15 @@ function CreateProjectContent() {
                       value={editableIdea}
                       onChange={(e) => setEditableIdea(e.target.value)}
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 min-h-[100px] resize-none"
-                      placeholder="Describe your project idea..."
+                      placeholder={t.create.editPlaceholder}
                     />
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row">
                       <Button
                         size="sm"
                         onClick={handleRegenerate}
                         disabled={isAnalyzing || !editableIdea.trim()}
                       >
-                        {isAnalyzing ? "Generating..." : "Generate New Plan"}
+                        {isAnalyzing ? t.create.generating : t.create.generateNewPlan}
                       </Button>
                       <Button
                         size="sm"
@@ -378,7 +373,7 @@ function CreateProjectContent() {
                           setIsEditingIdea(false)
                         }}
                       >
-                        Cancel
+                        {t.create.cancel}
                       </Button>
                     </div>
                   </div>
@@ -406,7 +401,7 @@ function CreateProjectContent() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">What Problem Does This Solve</CardTitle>
+                  <CardTitle className="text-base">{t.create.problemTitle}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground">{breakdown.problem || breakdown.description}</p>
@@ -414,10 +409,10 @@ function CreateProjectContent() {
               </Card>
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-base">Who Is This For</CardTitle>
+                  <CardTitle className="text-base">{t.create.audienceTitle}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground">{breakdown.target_users || "待定"}</p>
+                  <p className="text-sm text-muted-foreground">{breakdown.target_users || t.create.fallbackTargetUsers}</p>
                 </CardContent>
               </Card>
             </div>
@@ -428,7 +423,7 @@ function CreateProjectContent() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Target className="h-5 w-5 text-green-500" />
-                    MVP (What's Included in v1)
+                    {t.create.mvpTitle}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -450,7 +445,7 @@ function CreateProjectContent() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-blue-500" />
-                    First Week Plan
+                    {t.create.firstWeekTitle}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -476,7 +471,7 @@ function CreateProjectContent() {
                   </div>
                   <Badge variant="secondary" className="flex items-center gap-1">
                     <Sparkles className="h-3 w-3" />
-                    AI Generated
+                    {t.create.aiGenerated}
                   </Badge>
                 </div>
               </CardHeader>
@@ -487,7 +482,7 @@ function CreateProjectContent() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Target className="h-5 w-5 text-primary" />
-                  Project Milestones
+                  {t.create.milestonesTitle}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -495,13 +490,13 @@ function CreateProjectContent() {
                   {breakdown.milestones.map((milestone, index) => (
                     <div
                       key={index}
-                      className="flex items-start gap-4 rounded-lg border border-border p-4"
+                      className="flex flex-col gap-3 rounded-lg border border-border p-4 sm:flex-row sm:items-start sm:gap-4"
                     >
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
                         {index + 1}
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                           <h4 className="font-medium text-foreground">{milestone.name}</h4>
                           <Badge variant="outline">{milestone.timeframe}</Badge>
                         </div>
@@ -518,10 +513,10 @@ function CreateProjectContent() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5 text-primary" />
-                  Required Team Roles
+                  {t.create.rolesTitle}
                 </CardTitle>
                 <CardDescription>
-                  These are the skills and roles needed to bring this project to life
+                  {t.create.rolesDescription}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -551,7 +546,7 @@ function CreateProjectContent() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <AlertTriangle className="h-5 w-5 text-amber-500" />
-                  Potential Challenges
+                  {t.create.challengesTitle}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -570,14 +565,14 @@ function CreateProjectContent() {
             </Card>
 
             {/* Actions */}
-            <div className="flex items-center justify-between rounded-lg border border-border bg-card p-6">
+            <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-6 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="font-semibold text-foreground">Ready to start?</h3>
+                <h3 className="font-semibold text-foreground">{t.create.readyTitle}</h3>
                 <p className="text-sm text-muted-foreground">
-                  Create this project and start recruiting team members
+                  {t.create.readyDescription}
                 </p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Button
                   variant="outline"
                   onClick={() => {
@@ -585,17 +580,17 @@ function CreateProjectContent() {
                     setIdea("")
                   }}
                 >
-                  Start Over
+                  {t.create.startOver}
                 </Button>
                 <Button onClick={handleCreateProject} disabled={isCreating}>
                   {isCreating ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
+                      {t.create.creating}
                     </>
                   ) : (
                     <>
-                      Create Project
+                      {t.create.createProject}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </>
                   )}

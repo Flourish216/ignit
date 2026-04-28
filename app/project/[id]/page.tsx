@@ -717,16 +717,6 @@ export default function ProjectDetailPage() {
             </Card>
 
             {/* Team Chat */}
-            {/* Debug membership status */}
-            {user && (
-              <div className="text-xs text-muted-foreground bg-secondary/50 rounded px-3 py-2 mb-2">
-                Your ID: {user.id?.slice(0, 8)}... | 
-                Owner: {isOwner ? "yes" : "no"} | 
-                Member: {isTeamMember ? "yes" : "no"} | 
-                Team: {teamMembers?.length || 0} people
-              </div>
-            )}
-
             <ProjectChat
               projectId={id}
               userId={user?.id}

@@ -24,15 +24,16 @@ export async function POST(request: Request) {
     // Detect input language
     const isChinese = /[\u4e00-\u9fa5]/.test(idea)
 
+    const responseLanguage = isChinese ? "Simplified Chinese" : "English"
     const userPrompt = isChinese
-      ? `请帮我整理这个项目想法 "${idea}"。\n\n请从以下几个角度分析：\n1. 这个项目在解决什么问题？\n2. 面向什么用户群体？\n3. 一句话概括这个项目是什么？\n4. 第一版MVP应该包含什么？\n5. 最初7天可以怎么推进？\n\n请用JSON格式返回完整项目规划。`
-      : `Please help me structure this project idea: "${idea}". Analyze and respond in English ONLY. All field labels (problem, target_users, mvp, etc.) and all content values must be in English. Do not use any Chinese characters in your response.`
+      ? `请帮我整理这个项目想法："${idea}"。\n\n请从以下几个角度分析：\n1. 这个项目在解决什么问题？\n2. 面向什么用户群体？\n3. 一句话概括这个项目是什么？\n4. 第一版 MVP 应该包含什么？\n5. 最初 7 天可以怎么推进？\n\n请用 JSON 格式返回完整项目规划。JSON 的字段名必须保持英文，字段内容请使用简体中文。`
+      : `Please help me structure this project idea: "${idea}". Analyze and respond in English. Keep the JSON field names exactly as requested and write all content values in English.`
 
     const systemPrompt = `You are a project planning assistant for a collaborative platform where anyone — not just developers — can launch and grow their ideas. Projects can be apps, content series, community initiatives, physical products, social enterprises, creative works, educational programs, and more.
 
 Your goal is to help users turn a vague idea into a clear, collaborative project.
 
-CRITICAL: Always respond in English. All JSON field labels and all content values must be in English. Do NOT output any Chinese characters regardless of the user's input language.
+CRITICAL: Respond in ${responseLanguage}. Keep all JSON field names in English exactly as specified, but write all user-facing content values in ${responseLanguage}.
 
 When given a project idea, analyze and structure it into:
 

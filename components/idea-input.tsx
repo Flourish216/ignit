@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Sparkles, ArrowRight, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useLanguage } from "@/lib/i18n/context"
 
 interface IdeaInputProps {
   className?: string
@@ -13,16 +14,11 @@ interface IdeaInputProps {
   showExamples?: boolean
 }
 
-const exampleIdeas = [
-  "Build a mobile app that helps people learn a new language through daily conversations",
-  "Create a platform for local artists to showcase and sell their work",
-  "Design a tool that helps remote teams stay connected through virtual coffee chats",
-]
-
 export function IdeaInput({ className, placeholder, showExamples = true }: IdeaInputProps) {
   const [idea, setIdea] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
+  const { t } = useLanguage()
 
   const handleSubmit = async () => {
     if (!idea.trim()) return
@@ -43,7 +39,7 @@ export function IdeaInput({ className, placeholder, showExamples = true }: IdeaI
           <Textarea
             value={idea}
             onChange={(e) => setIdea(e.target.value)}
-            placeholder={placeholder || "Describe your project idea in one sentence..."}
+            placeholder={placeholder || t.ideaInput.placeholder}
             className="min-h-[120px] resize-none border-0 bg-transparent text-base focus-visible:ring-0 focus-visible:ring-offset-0"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
@@ -52,25 +48,25 @@ export function IdeaInput({ className, placeholder, showExamples = true }: IdeaI
               }
             }}
           />
-          <div className="flex items-center justify-between border-t border-border/50 px-3 py-2">
+          <div className="flex flex-col gap-3 border-t border-border/50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Sparkles className="h-3.5 w-3.5" />
-              <span>AI will break down your idea and suggest team roles</span>
+              <span>{t.ideaInput.helper}</span>
             </div>
             <Button
               onClick={handleSubmit}
               disabled={!idea.trim() || isLoading}
               size="sm"
-              className="gap-2"
+              className="w-full gap-2 sm:w-auto"
             >
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Processing
+                  {t.ideaInput.processing}
                 </>
               ) : (
                 <>
-                  Start Building
+                  {t.ideaInput.submit}
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -81,9 +77,9 @@ export function IdeaInput({ className, placeholder, showExamples = true }: IdeaI
 
       {showExamples && (
         <div className="mt-6 space-y-3">
-          <p className="text-center text-sm text-muted-foreground">Try an example:</p>
+          <p className="text-center text-sm text-muted-foreground">{t.ideaInput.examplesTitle}</p>
           <div className="flex flex-wrap justify-center gap-2">
-            {exampleIdeas.map((example, index) => (
+            {t.ideaInput.examples.map((example, index) => (
               <button
                 key={index}
                 onClick={() => handleExampleClick(example)}
