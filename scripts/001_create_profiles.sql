@@ -1,8 +1,6 @@
 -- Create profiles table
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  email TEXT,
-  display_name TEXT,
   full_name TEXT,
   bio TEXT,
   avatar_url TEXT,

@@ -187,9 +187,7 @@ export default function ProfilePage() {
     setSaveError("")
 
     try {
-      const nextProfile = {
-        id: user.id,
-        email: user.email,
+      const profilePayload = {
         full_name: editForm.full_name,
         bio: editForm.bio,
         location: editForm.location,
@@ -199,20 +197,37 @@ export default function ProfilePage() {
         updated_at: new Date().toISOString(),
       }
 
-      const { data, error } = await supabase
+      const { data: existingProfile, error: lookupError } = await supabase
         .from("profiles")
-        .upsert(nextProfile, { onConflict: "id" })
-        .select("*")
-        .single()
+        .select("id")
+        .eq("id", user.id)
+        .maybeSingle()
+
+      if (lookupError) throw lookupError
+
+      const query = existingProfile
+        ? supabase
+            .from("profiles")
+            .update(profilePayload)
+            .eq("id", user.id)
+        : supabase
+            .from("profiles")
+            .insert({ id: user.id, ...profilePayload })
+
+      const { error } = await query
 
       if (error) throw error
 
-      mutate(`profile-${user.id}`, data, { revalidate: false })
+      mutate(`profile-${user.id}`, { ...profile, id: user.id, ...profilePayload }, { revalidate: false })
       setIsEditing(false)
       setGeneratedLines([])
     } catch (error) {
       console.error("Error saving profile:", error)
-      setSaveError("Could not save profile. Please try again.")
+      const message =
+        error && typeof error === "object" && "message" in error
+          ? String(error.message)
+          : "Unknown Supabase error"
+      setSaveError(`Could not save profile: ${message}`)
     } finally {
       setIsSaving(false)
     }
