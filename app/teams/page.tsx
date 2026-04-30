@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Navigation } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -24,6 +24,8 @@ import {
   ArrowRight,
   UserPlus,
   Clock,
+  ExternalLink,
+  MapPin,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import useSWR, { mutate } from "swr"
@@ -31,12 +33,47 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { formatDistanceToNow } from "date-fns"
 
+const goalsPrefix = "profile:goals:"
+const availabilityPrefix = "profile:availability:"
+
+function readStoredValue(value: unknown, prefix: string) {
+  if (!Array.isArray(value)) return ""
+  const item = value.find((entry) => typeof entry === "string" && entry.startsWith(prefix))
+  return typeof item === "string" ? item.slice(prefix.length) : ""
+}
+
+function getProfileGoals(profile: any) {
+  return profile?.current_goals || readStoredValue(profile?.interests, goalsPrefix)
+}
+
+function getProfileAvailability(profile: any) {
+  return profile?.availability || readStoredValue(profile?.skills, availabilityPrefix)
+}
+
+function getVisibleProfileTags(profile: any) {
+  const skills = Array.isArray(profile?.skills)
+    ? profile.skills.filter((item: string) => !item.startsWith(availabilityPrefix))
+    : []
+  const interests = Array.isArray(profile?.interests)
+    ? profile.interests.filter((item: string) => !item.startsWith(goalsPrefix))
+    : []
+
+  return [...skills, ...interests]
+}
+
 export default function TeamsPage() {
   const router = useRouter()
   const supabase = createClient()
   const [selectedApplication, setSelectedApplication] = useState<any>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [activeView, setActiveView] = useState<"owned" | "member" | "applications">("owned")
+
+  useEffect(() => {
+    const view = new URLSearchParams(window.location.search).get("view")
+    if (view === "applications") {
+      setActiveView("applications")
+    }
+  }, [])
 
   const { data: user, isLoading: userLoading } = useSWR("user", async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -300,7 +337,7 @@ export default function TeamsPage() {
       const userIds = [...new Set(pendingApplicationsRaw.map((a: any) => a.user_id))]
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, avatar_url, bio, skills")
+        .select("id, full_name, avatar_url, bio, skills, interests, location, website")
         .in("id", userIds)
       
       if (error) {
@@ -457,8 +494,8 @@ export default function TeamsPage() {
                   </p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" asChild>
-                <a href="#applications">Review</a>
+              <Button variant="outline" size="sm" onClick={() => setActiveView("applications")}>
+                Review
               </Button>
             </CardContent>
           </Card>
@@ -644,55 +681,87 @@ export default function TeamsPage() {
 
         {/* Application Detail Dialog */}
         <Dialog open={!!selectedApplication} onOpenChange={() => setSelectedApplication(null)}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Interest Details</DialogTitle>
+              <DialogTitle>Interest profile</DialogTitle>
               <DialogDescription>
-                Review this response for {selectedApplication?.project?.title}
+                Review the person who responded to {selectedApplication?.project?.title}
               </DialogDescription>
             </DialogHeader>
             {selectedApplication && (
-              <div className="space-y-4 py-4">
-                <div className="flex items-center gap-4">
+              <div className="space-y-5 py-4">
+                <div className="flex items-start gap-4 rounded-lg border border-border bg-secondary/30 p-4">
                   <Avatar className="h-16 w-16">
                     <AvatarImage src={selectedApplication.user?.avatar_url || ""} />
                     <AvatarFallback className="bg-primary/10 text-xl text-primary">
                       {selectedApplication.user?.full_name?.[0]?.toUpperCase() || "U"}
                     </AvatarFallback>
                   </Avatar>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-lg font-semibold">
                       {selectedApplication.user?.full_name || "Anonymous"}
                     </p>
-                    <Badge>{selectedApplication.role_applied}</Badge>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Interested in <span className="font-medium text-foreground">{selectedApplication.project?.title}</span>
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Badge>{selectedApplication.role_applied}</Badge>
+                      {selectedApplication.user?.location && (
+                        <Badge variant="outline" className="gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {selectedApplication.user.location}
+                        </Badge>
+                      )}
+                      {getProfileAvailability(selectedApplication.user) && (
+                        <Badge variant="outline">{getProfileAvailability(selectedApplication.user)}</Badge>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {selectedApplication.user?.bio && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Bio</p>
-                    <p className="mt-1 text-foreground">{selectedApplication.user.bio}</p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-border p-4">
+                    <p className="text-sm font-medium text-muted-foreground">About</p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">
+                      {selectedApplication.user?.bio || "No profile description yet."}
+                    </p>
                   </div>
-                )}
+
+                  <div className="rounded-lg border border-border p-4">
+                    <p className="text-sm font-medium text-muted-foreground">Wants to start</p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">
+                      {getProfileGoals(selectedApplication.user) || "No start intent added yet."}
+                    </p>
+                  </div>
+                </div>
 
                 {selectedApplication.message && (
-                  <div>
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
                     <p className="text-sm font-medium text-muted-foreground">Message</p>
-                    <p className="mt-1 text-foreground">{selectedApplication.message}</p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">{selectedApplication.message}</p>
                   </div>
                 )}
 
-                {selectedApplication.user?.skills && selectedApplication.user.skills.length > 0 && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Skills</p>
+                {getVisibleProfileTags(selectedApplication.user).length > 0 && (
+                  <div className="rounded-lg border border-border p-4">
+                    <p className="text-sm font-medium text-muted-foreground">Profile notes</p>
                     <div className="mt-2 flex flex-wrap gap-1">
-                      {selectedApplication.user.skills.map((skill: string, index: number) => (
+                      {getVisibleProfileTags(selectedApplication.user).map((skill: string, index: number) => (
                         <Badge key={index} variant="secondary">
                           {skill}
                         </Badge>
                       ))}
                     </div>
                   </div>
+                )}
+
+                {selectedApplication.user?.website && (
+                  <Button asChild variant="outline" className="w-full justify-center gap-2">
+                    <a href={selectedApplication.user.website} target="_blank" rel="noreferrer">
+                      Open website
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
                 )}
               </div>
             )}

@@ -283,7 +283,7 @@ export default function SparkDetailPage() {
                       <span className="font-medium">{interestCount || 0}</span> interested
                     </div>
                     <Button asChild className="w-full" variant="outline">
-                      <Link href="/teams">Review interests</Link>
+                      <Link href="/teams?view=applications">Review interests</Link>
                     </Button>
                     <Button
                       className="w-full"
