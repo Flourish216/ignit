@@ -79,6 +79,14 @@ function readStoredValue(value: unknown, prefix: string) {
   return typeof item === "string" ? item.slice(prefix.length) : ""
 }
 
+function mergeStoredValue(value: unknown, prefix: string, nextValue: string) {
+  const existing = Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string" && !entry.startsWith(prefix))
+    : []
+
+  return nextValue.trim() ? [...existing, `${prefix}${nextValue.trim()}`] : existing
+}
+
 function normalizeProfile(profile: any): ProfileDraft {
   return {
     full_name: profile?.full_name || "",
@@ -179,22 +187,27 @@ export default function ProfilePage() {
     setSaveError("")
 
     try {
-      const { error } = await supabase
+      const nextProfile = {
+        id: user.id,
+        email: user.email,
+        full_name: editForm.full_name,
+        bio: editForm.bio,
+        location: editForm.location,
+        website: editForm.website,
+        interests: mergeStoredValue(profile?.interests, goalsPrefix, editForm.current_goals),
+        skills: mergeStoredValue(profile?.skills, availabilityPrefix, editForm.availability),
+        updated_at: new Date().toISOString(),
+      }
+
+      const { data, error } = await supabase
         .from("profiles")
-        .update({
-          full_name: editForm.full_name,
-          bio: editForm.bio,
-          location: editForm.location,
-          website: editForm.website,
-          interests: editForm.current_goals ? [`${goalsPrefix}${editForm.current_goals}`] : [],
-          skills: editForm.availability ? [`${availabilityPrefix}${editForm.availability}`] : [],
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id)
+        .upsert(nextProfile, { onConflict: "id" })
+        .select("*")
+        .single()
 
       if (error) throw error
 
-      mutate(`profile-${user.id}`)
+      mutate(`profile-${user.id}`, data, { revalidate: false })
       setIsEditing(false)
       setGeneratedLines([])
     } catch (error) {
