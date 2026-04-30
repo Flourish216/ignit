@@ -124,6 +124,48 @@
   }
 }
 
+.home-art-title {
+  line-height: 0.96;
+  letter-spacing: 0;
+}
+
+.home-art-title-emphasis {
+  position: relative;
+  display: inline-block;
+  font-family: Georgia, "Times New Roman", serif;
+  font-style: italic;
+  font-weight: 700;
+  color: transparent;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in oklab, var(--primary) 92%, black 8%),
+      color-mix(in oklab, var(--chart-2) 82%, black 4%)
+    );
+  background-clip: text;
+  -webkit-background-clip: text;
+  text-shadow: 0 16px 34px color-mix(in oklab, var(--primary) 16%, transparent);
+}
+
+.home-art-title-emphasis::after {
+  content: "";
+  position: absolute;
+  left: 0.1em;
+  right: 0.05em;
+  bottom: -0.12em;
+  height: 0.16em;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--primary) 42%, transparent) 12%,
+      color-mix(in oklab, var(--chart-2) 42%, transparent) 82%,
+      transparent
+    );
+  border-radius: 999px;
+  transform: rotate(-1.5deg);
+}
+
 @keyframes igni-drift-right {
   0%,
   100% {

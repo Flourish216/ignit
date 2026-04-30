@@ -10,6 +10,7 @@ import { useLanguage } from "@/lib/i18n/context"
 export default function HomePage() {
   const { t } = useLanguage()
   const stepIcons = [Lightbulb, Compass, MessageSquare]
+  const isDefaultTitle = t.mainline.title === "Don’t start alone."
 
   return (
     <div className="min-h-screen bg-background lg:pl-64">
@@ -18,8 +19,15 @@ export default function HomePage() {
         <section className="px-4 pb-12 pt-20 sm:px-6 sm:pt-24 lg:px-8 lg:pt-28">
           <div className="mx-auto max-w-4xl">
             <div className="mx-auto max-w-2xl text-center">
-              <h1 className="text-balance text-5xl font-semibold tracking-tight text-foreground sm:text-6xl">
-                {t.mainline.title}
+              <h1 className="home-art-title text-balance text-5xl font-semibold tracking-normal text-foreground sm:text-6xl">
+                {isDefaultTitle ? (
+                  <>
+                    <span>Don’t start</span>{" "}
+                    <span className="home-art-title-emphasis">alone.</span>
+                  </>
+                ) : (
+                  t.mainline.title
+                )}
               </h1>
               <p className="mx-auto mt-5 max-w-xl text-pretty text-base text-muted-foreground sm:text-lg">
                 {t.mainline.subtitle}
