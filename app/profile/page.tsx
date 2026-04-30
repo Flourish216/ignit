@@ -51,12 +51,12 @@ const fallbackLines = [
 ]
 
 const floatingPositions = [
-  "left-[5%] top-[7%] [--igni-travel:34px] [animation-delay:-0.5s]",
-  "left-[48%] top-[18%] [--igni-travel:26px] [animation-delay:-2.1s]",
-  "left-[7%] top-[36%] [--igni-travel:42px] [animation-delay:-3.4s]",
-  "left-[56%] top-[43%] [--igni-travel:24px] [animation-delay:-1.3s]",
-  "left-[12%] bottom-[17%] [--igni-travel:30px] [animation-delay:-4.5s]",
-  "left-[53%] bottom-[8%] [--igni-travel:36px] [animation-delay:-2.9s]",
+  "left-[4%] top-[6%] [--igni-travel:24px] [animation-delay:-0.5s]",
+  "right-[4%] top-[10%] [--igni-travel:-22px] [animation-delay:-2.1s]",
+  "left-[3%] top-[47%] [--igni-travel:26px] [animation-delay:-3.4s]",
+  "right-[3%] top-[51%] [--igni-travel:-24px] [animation-delay:-1.3s]",
+  "left-[7%] bottom-[6%] [--igni-travel:20px] [animation-delay:-4.5s]",
+  "right-[7%] bottom-[6%] [--igni-travel:-26px] [animation-delay:-2.9s]",
 ]
 
 const goalsPrefix = "profile:goals:"
