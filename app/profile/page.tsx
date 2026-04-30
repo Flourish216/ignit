@@ -35,6 +35,10 @@ type ProfileDraft = {
   interests: string[]
   current_goals: string
   availability: string
+  companion_name: string
+  companion_mood: string
+  companion_color: string
+  companion_traits: string[]
 }
 
 const blankProfile: ProfileDraft = {
@@ -46,6 +50,10 @@ const blankProfile: ProfileDraft = {
   interests: [],
   current_goals: "",
   availability: "",
+  companion_name: "",
+  companion_mood: "curious",
+  companion_color: "indigo",
+  companion_traits: [],
 }
 
 const skillOptions = [
@@ -76,6 +84,15 @@ const interestOptions = [
   "Campus events",
   "Side projects",
   "Creative work",
+]
+
+const moodOptions = ["curious", "focused", "fast-moving", "creative", "low-pressure", "social"]
+
+const companionColors = [
+  { value: "indigo", label: "Indigo", className: "bg-indigo-500" },
+  { value: "sky", label: "Sky", className: "bg-sky-500" },
+  { value: "mint", label: "Mint", className: "bg-emerald-500" },
+  { value: "rose", label: "Rose", className: "bg-rose-500" },
 ]
 
 const sparkCategories = [
@@ -114,6 +131,10 @@ function normalizeProfile(profile: any): ProfileDraft {
     interests: Array.isArray(profile?.interests) ? profile.interests : [],
     current_goals: profile?.current_goals || "",
     availability: profile?.availability || "",
+    companion_name: profile?.companion_name || "",
+    companion_mood: profile?.companion_mood || "curious",
+    companion_color: profile?.companion_color || "indigo",
+    companion_traits: Array.isArray(profile?.companion_traits) ? profile.companion_traits : [],
   }
 }
 
@@ -122,6 +143,7 @@ export default function ProfilePage() {
   const supabase = createClient()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState("")
   const [editForm, setEditForm] = useState<ProfileDraft>(blankProfile)
 
   const { data: user, isLoading: userLoading } = useSWR("user", async () => {
@@ -159,23 +181,29 @@ export default function ProfilePage() {
   const displayProfile = isEditing ? editForm : normalizeProfile(profile)
 
   const traitLines = useMemo(() => {
-    const lines = [
+    const savedTraits = displayProfile.companion_traits
+      .map((trait) => trait.trim())
+      .filter(Boolean)
+
+    const derivedTraits = [
       ...displayProfile.skills.slice(0, 2).map((skill) => `good at ${skill.toLowerCase()}`),
       ...displayProfile.interests.slice(0, 2).map((interest) => `into ${interest.toLowerCase()}`),
       displayProfile.current_goals || "looking for collaborators",
       displayProfile.availability ? `free ${displayProfile.availability.replace(/-/g, " ")}` : "free on weekends",
     ].filter(Boolean)
 
-    return [...lines, ...fallbackTraits].slice(0, 6)
+    return [...savedTraits, ...derivedTraits, ...fallbackTraits].slice(0, 6)
   }, [displayProfile])
 
   const startEditing = () => {
     setEditForm(normalizeProfile(profile))
+    setSaveError("")
     setIsEditing(true)
   }
 
   const cancelEditing = () => {
     setEditForm(blankProfile)
+    setSaveError("")
     setIsEditing(false)
   }
 
@@ -188,12 +216,37 @@ export default function ProfilePage() {
     }))
   }
 
+  const updateCompanionTrait = (index: number, value: string) => {
+    setEditForm((current) => ({
+      ...current,
+      companion_traits: (current.companion_traits.length > index
+        ? current.companion_traits
+        : [...current.companion_traits, ""]
+      ).map((trait, traitIndex) => (traitIndex === index ? value : trait)),
+    }))
+  }
+
+  const addCompanionTrait = () => {
+    setEditForm((current) => ({
+      ...current,
+      companion_traits: [...current.companion_traits, ""].slice(0, 6),
+    }))
+  }
+
+  const removeCompanionTrait = (index: number) => {
+    setEditForm((current) => ({
+      ...current,
+      companion_traits: current.companion_traits.filter((_, traitIndex) => traitIndex !== index),
+    }))
+  }
+
   const handleSave = async () => {
     if (!user) return
     setIsSaving(true)
+    setSaveError("")
 
     try {
-      const { error } = await supabase
+      const { error: profileError } = await supabase
         .from("profiles")
         .update({
           full_name: editForm.full_name,
@@ -208,11 +261,37 @@ export default function ProfilePage() {
         })
         .eq("id", user.id)
 
-      if (error) throw error
+      if (profileError) throw profileError
+
+      const { error: companionError } = await supabase
+        .from("profiles")
+        .update({
+          companion_name: editForm.companion_name,
+          companion_mood: editForm.companion_mood,
+          companion_color: editForm.companion_color,
+          companion_traits: editForm.companion_traits.map((trait) => trait.trim()).filter(Boolean),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id)
+
+      if (companionError) {
+        setSaveError(
+          companionError.message.includes("companion")
+            ? "Basic profile saved. Companion fields are missing in Supabase. Run scripts/005_add_profile_companion_fields.sql, then save again."
+            : "Basic profile saved, but Companion fields could not be saved."
+        )
+        return
+      }
+
       mutate(`profile-${user.id}`)
       setIsEditing(false)
     } catch (error) {
       console.error("Error saving profile:", error)
+      setSaveError(
+        error instanceof Error && error.message.includes("companion")
+          ? "Companion fields are missing in Supabase. Run scripts/005_add_profile_companion_fields.sql, then save again."
+          : "Could not save profile. Please try again."
+      )
     } finally {
       setIsSaving(false)
     }
@@ -264,6 +343,11 @@ export default function ProfilePage() {
             </Button>
           )}
         </div>
+        {saveError && (
+          <div className="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {saveError}
+          </div>
+        )}
 
         <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <Card>
@@ -361,14 +445,22 @@ export default function ProfilePage() {
                 </Badge>
                 <h2 className="mt-3 text-2xl font-semibold text-foreground">Pixel identity layer</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Companion lines come from editable profile fields below. Later, matching can use Sparks plus these traits.
+                  Companion has its own editable traits, backed by your Profile data in Supabase.
                 </p>
               </div>
 
               <div className="relative min-h-[430px] overflow-hidden bg-card">
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:24px_24px] opacity-30" />
                 <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
-                  <PixelCompanion />
+                  <PixelCompanion color={displayProfile.companion_color} />
+                  <div className="mt-2 text-center">
+                    <p className="font-semibold text-foreground">
+                      {displayProfile.companion_name || `${displayProfile.full_name || "Your"} Companion`}
+                    </p>
+                    <p className="text-xs capitalize text-muted-foreground">
+                      {displayProfile.companion_mood.replace(/-/g, " ")}
+                    </p>
+                  </div>
                 </div>
                 {traitLines.map((trait, index) => (
                   <div
@@ -393,6 +485,103 @@ export default function ProfilePage() {
               <p className="mt-1 text-sm text-muted-foreground">
                 These are normal profile attributes. The Companion just makes them more memorable.
               </p>
+
+              <div className="mt-5 grid gap-3 rounded-lg border border-border bg-secondary/25 p-4">
+                <EditableField
+                  label="Companion Name"
+                  value={editForm.companion_name}
+                  displayValue={displayProfile.companion_name || "Not named yet"}
+                  editing={isEditing}
+                  onChange={(value) => setEditForm({ ...editForm, companion_name: value })}
+                />
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-lg border border-border bg-background p-3">
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Mood</p>
+                    {isEditing ? (
+                      <select
+                        value={editForm.companion_mood}
+                        onChange={(event) => setEditForm({ ...editForm, companion_mood: event.target.value })}
+                        className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        {moodOptions.map((mood) => (
+                          <option key={mood} value={mood}>
+                            {mood.replace(/-/g, " ")}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <p className="mt-1 text-sm font-medium capitalize text-foreground">
+                        {displayProfile.companion_mood.replace(/-/g, " ")}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-lg border border-border bg-background p-3">
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Color</p>
+                    {isEditing ? (
+                      <div className="mt-2 grid grid-cols-4 gap-2">
+                        {companionColors.map((color) => (
+                          <button
+                            key={color.value}
+                            type="button"
+                            onClick={() => setEditForm({ ...editForm, companion_color: color.value })}
+                            className={`flex h-10 items-center justify-center rounded-md border text-xs ${
+                              editForm.companion_color === color.value
+                                ? "border-primary ring-2 ring-primary/20"
+                                : "border-border"
+                            }`}
+                            aria-label={color.label}
+                          >
+                            <span className={`h-4 w-4 rounded-sm ${color.className}`} />
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-sm font-medium capitalize text-foreground">
+                        {displayProfile.companion_color}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-border bg-background p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-medium uppercase text-muted-foreground">Speech Lines</p>
+                    {isEditing && editForm.companion_traits.length < 6 && (
+                      <Button type="button" variant="outline" size="sm" onClick={addCompanionTrait}>
+                        Add line
+                      </Button>
+                    )}
+                  </div>
+                  {isEditing ? (
+                    <div className="mt-3 grid gap-2">
+                      {(editForm.companion_traits.length > 0 ? editForm.companion_traits : [""]).map((trait, index) => (
+                        <div key={index} className="flex gap-2">
+                          <Input
+                            value={trait}
+                            onChange={(event) => updateCompanionTrait(index, event.target.value)}
+                            placeholder="good at product ideas"
+                          />
+                          <Button type="button" variant="outline" size="icon" onClick={() => removeCompanionTrait(index)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : displayProfile.companion_traits.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {displayProfile.companion_traits.map((trait) => (
+                        <Badge key={trait} variant="secondary">
+                          {trait}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-muted-foreground">No custom lines yet</p>
+                  )}
+                </div>
+              </div>
 
               <TraitEditor
                 title="Good at"

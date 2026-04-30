@@ -17,19 +17,45 @@ const companionPixels = [
   ".333....333.",
 ]
 
-const colorMap: Record<string, string> = {
-  "1": "bg-slate-950",
-  "2": "bg-sky-200",
-  "3": "bg-primary",
-  "4": "bg-indigo-300",
-  "6": "bg-indigo-500",
+const palettes: Record<string, Record<string, string>> = {
+  indigo: {
+    "1": "bg-slate-950",
+    "2": "bg-sky-200",
+    "3": "bg-primary",
+    "4": "bg-indigo-300",
+    "6": "bg-indigo-500",
+  },
+  sky: {
+    "1": "bg-slate-950",
+    "2": "bg-cyan-100",
+    "3": "bg-sky-500",
+    "4": "bg-sky-300",
+    "6": "bg-blue-500",
+  },
+  mint: {
+    "1": "bg-slate-950",
+    "2": "bg-emerald-100",
+    "3": "bg-emerald-500",
+    "4": "bg-teal-300",
+    "6": "bg-teal-500",
+  },
+  rose: {
+    "1": "bg-slate-950",
+    "2": "bg-rose-100",
+    "3": "bg-rose-500",
+    "4": "bg-pink-300",
+    "6": "bg-fuchsia-500",
+  },
 }
 
 interface PixelCompanionProps {
   className?: string
+  color?: string
 }
 
-export function PixelCompanion({ className }: PixelCompanionProps) {
+export function PixelCompanion({ className, color = "indigo" }: PixelCompanionProps) {
+  const colorMap = palettes[color] || palettes.indigo
+
   return (
     <div className={cn("relative h-64 w-64", className)}>
       <div className="absolute inset-6 rounded-full bg-primary/10 blur-2xl" />
