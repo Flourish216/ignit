@@ -194,18 +194,6 @@ export default function ProfilePage() {
 
       if (error) throw error
 
-      const { error: optionalFieldError } = await supabase
-        .from("profiles")
-        .update({
-          current_goals: editForm.current_goals,
-          availability: editForm.availability,
-        })
-        .eq("id", user.id)
-
-      if (optionalFieldError && optionalFieldError.code !== "42703") {
-        throw optionalFieldError
-      }
-
       mutate(`profile-${user.id}`)
       setIsEditing(false)
       setGeneratedLines([])
