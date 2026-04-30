@@ -1,35 +1,27 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useEffect, useRef, useState, type FormEvent } from "react"
+import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
-import useSWR, { mutate } from "swr"
 import { formatDistanceToNow } from "date-fns"
-import { 
-  Hash, 
-  Settings, 
-  Plus, 
-  Send, 
-  MoreVertical,
-  ChevronDown,
-  Loader2,
+import useSWR, { mutate } from "swr"
+import {
   ArrowLeft,
-  User,
-  Mic,
-  Headphones,
-  Phone,
-  Video,
-  AtSign,
-  Smile,
-  Paperclip,
+  ClipboardList,
   Edit3,
+  Hash,
+  Loader2,
+  MessageSquare,
+  Plus,
+  Send,
+  Sparkles,
   Trash2,
-  X
+  Users,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Navigation } from "@/components/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -38,25 +30,43 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import Link from "next/link"
+import { Input } from "@/components/ui/input"
+import { createClient } from "@/lib/supabase/client"
+
+type SparkBreakdown = {
+  title?: string
+  category?: string
+  description?: string
+  location?: string
+  time_availability?: string
+  looking_for?: string
+  vibe?: string
+  commitment?: string
+  status?: string
+}
+
+type WorkspaceProject = {
+  id: string
+  title: string | null
+  description: string | null
+  status: string
+  owner_id: string
+  ai_breakdown: SparkBreakdown | null
+  created_at: string
+}
+
+type WorkspaceTeam = {
+  id: string
+  name: string | null
+  project_id: string
+  project: WorkspaceProject | null
+}
 
 type Channel = {
   id: string
   name: string
   description: string | null
-  type: 'text' | 'voice' | 'announcement'
+  type: "text" | "voice" | "announcement"
   is_default: boolean
 }
 
@@ -68,22 +78,45 @@ type Message = {
   user_id: string
   user?: {
     id: string
-    full_name: string
+    full_name: string | null
     avatar_url: string | null
-  }
+  } | null
 }
 
 type TeamMember = {
   id: string
   user_id: string
-  role: string
+  role: string | null
   status: string
   user?: {
     id: string
-    full_name: string
+    full_name: string | null
     avatar_url: string | null
-  }
+  } | null
 }
+
+type Profile = {
+  id: string
+  full_name: string | null
+  avatar_url: string | null
+}
+
+const getInitial = (name?: string | null) => name?.trim()?.[0]?.toUpperCase() || "I"
+
+const getStatusLabel = (status?: string, sparkStatus?: string) => {
+  if (sparkStatus) return sparkStatus
+  if (status === "recruiting") return "open"
+  if (status === "in_progress") return "matched"
+  return status || "open"
+}
+
+const cleanChannelName = (name: string) =>
+  name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
 
 export default function TeamWorkspacePage() {
   const params = useParams()
@@ -91,7 +124,6 @@ export default function TeamWorkspacePage() {
   const teamId = params.id as string
   const supabase = createClient()
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
 
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null)
   const [messageInput, setMessageInput] = useState("")
@@ -103,165 +135,197 @@ export default function TeamWorkspacePage() {
   const [newChannelDescription, setNewChannelDescription] = useState("")
   const [isCreatingChannel, setIsCreatingChannel] = useState(false)
 
-  // Get current user
-  const { data: user, isLoading: userLoading } = useSWR("user", async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    return user ?? null
-  }, {
-    revalidateOnFocus: false,
-    shouldRetryOnError: false,
-  })
+  const { data: user, isLoading: userLoading } = useSWR(
+    "user",
+    async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      return user ?? null
+    },
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  )
 
-  // Get team info
-  const { data: team } = useSWR(
+  const { data: team, isLoading: teamLoading } = useSWR(
     teamId ? `team-${teamId}` : null,
     async () => {
       const { data, error } = await supabase
         .from("teams")
         .select(`
-          *,
-          project:projects(id, title, owner_id)
+          id,
+          name,
+          project_id,
+          project:projects(id, title, description, status, owner_id, ai_breakdown, created_at)
         `)
         .eq("id", teamId)
         .single()
-      
+
       if (error) throw error
-      return data
-    }
+      return data as WorkspaceTeam
+    },
   )
 
-  // Get team members
+  const ownerId = team?.project?.owner_id
+
+  const { data: ownerProfile } = useSWR(
+    ownerId ? `workspace-owner-${ownerId}` : null,
+    async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url")
+        .eq("id", ownerId)
+        .single()
+
+      if (error) return null
+      return data as Profile
+    },
+  )
+
   const { data: members } = useSWR(
     teamId ? `team-members-${teamId}` : null,
     async () => {
       const { data, error } = await supabase
         .from("team_members")
         .select(`
-          *,
+          id,
+          user_id,
+          role,
+          status,
           user:profiles(id, full_name, avatar_url)
         `)
         .eq("team_id", teamId)
         .eq("status", "accepted")
-      
+
       if (error) throw error
       return data as TeamMember[]
-    }
+    },
   )
 
-  // Get channels
   const { data: channels } = useSWR(
     teamId ? `channels-${teamId}` : null,
     async () => {
       const { data, error } = await supabase
         .from("channels")
-        .select("*")
+        .select("id, name, description, type, is_default")
         .eq("team_id", teamId)
         .order("is_default", { ascending: false })
         .order("created_at", { ascending: true })
-      
+
       if (error) throw error
       return data as Channel[]
-    }
+    },
   )
 
-  // Auto-select default channel
   useEffect(() => {
     if (channels && channels.length > 0 && !selectedChannelId) {
-      const defaultChannel = channels.find(c => c.is_default) || channels[0]
+      const defaultChannel = channels.find((channel) => channel.is_default) || channels[0]
       setSelectedChannelId(defaultChannel.id)
     }
   }, [channels, selectedChannelId])
 
-  // Get messages for selected channel
+  const activeChannelId = selectedChannelId || channels?.[0]?.id || null
+  const selectedChannel = channels?.find((channel) => channel.id === activeChannelId) || channels?.[0] || null
+
   const { data: messages, mutate: mutateMessages } = useSWR(
-    selectedChannelId ? `messages-${selectedChannelId}` : null,
+    activeChannelId ? `messages-${activeChannelId}` : null,
     async () => {
       const { data, error } = await supabase
         .from("channel_messages")
         .select(`
-          *,
+          id,
+          content,
+          created_at,
+          edited_at,
+          user_id,
           user:profiles(id, full_name, avatar_url)
         `)
-        .eq("channel_id", selectedChannelId)
+        .eq("channel_id", activeChannelId)
         .order("created_at", { ascending: true })
         .limit(100)
-      
+
       if (error) throw error
       return data as Message[]
-    }
+    },
   )
 
-  // Subscribe to new messages
   useEffect(() => {
-    if (!selectedChannelId) return
+    if (!activeChannelId) return
 
     const subscription = supabase
-      .channel(`channel-${selectedChannelId}`)
+      .channel(`workspace-channel-${activeChannelId}`)
       .on(
-        'postgres_changes',
+        "postgres_changes",
         {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'channel_messages',
-          filter: `channel_id=eq.${selectedChannelId}`
+          event: "*",
+          schema: "public",
+          table: "channel_messages",
+          filter: `channel_id=eq.${activeChannelId}`,
         },
-        (payload) => {
-          const newMessage = payload.new as Message
-          mutateMessages((current) => {
-            if (!current) return [newMessage]
-            if (current.find(m => m.id === newMessage.id)) return current
-            return [...current, newMessage]
-          }, false)
-        }
+        () => {
+          mutateMessages()
+        },
       )
       .subscribe()
 
     return () => {
       subscription.unsubscribe()
     }
-  }, [selectedChannelId, supabase, mutateMessages])
+  }, [activeChannelId, mutateMessages, supabase])
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  // Check if user is team member
-  const isTeamMember = user && (
-    team?.project?.owner_id === user.id ||
-    members?.some(m => m.user_id === user.id)
+  useEffect(() => {
+    if (user === null) {
+      router.push(`/auth/login?redirect=/team/${teamId}`)
+    }
+  }, [router, teamId, user])
+
+  const isOwner = Boolean(user?.id && team?.project?.owner_id === user.id)
+  const isWorkspaceMember = Boolean(
+    user?.id && (isOwner || members?.some((member) => member.user_id === user.id)),
   )
+  const details = (team?.project?.ai_breakdown || {}) as SparkBreakdown
+  const sparkTitle = details.title || team?.project?.title || team?.name || "Spark"
+  const sparkDescription = details.description || team?.project?.description || "No brief yet."
+  const sparkStatus = getStatusLabel(team?.project?.status, details.status)
+  const visibleMembers = members || []
+  const memberCount = visibleMembers.length + (ownerProfile ? 1 : 0)
+  const firstMove = details.time_availability
+    ? `Find a time: ${details.time_availability}`
+    : details.looking_for
+      ? `Start with the person you were looking for: ${details.looking_for}`
+      : "Agree on the first small thing you can do together."
 
-  const isOwner = user?.id === team?.project?.owner_id
-
-  // Send message
-  const handleSendMessage = async (e?: React.FormEvent) => {
-    e?.preventDefault()
-    if (!messageInput.trim() || !selectedChannelId || !user) return
+  const handleSendMessage = async (event?: FormEvent) => {
+    event?.preventDefault()
+    if (!messageInput.trim() || !activeChannelId || !user || !isWorkspaceMember) return
 
     setIsSending(true)
     const content = messageInput.trim()
     setMessageInput("")
 
     try {
-      const { error } = await supabase
-        .from("channel_messages")
-        .insert({
-          channel_id: selectedChannelId,
-          user_id: user.id,
-          content: content,
-        })
+      const { error } = await supabase.from("channel_messages").insert({
+        channel_id: activeChannelId,
+        user_id: user.id,
+        content,
+      })
 
       if (error) throw error
-    } catch (err) {
-      console.error("Failed to send message:", err)
-      setMessageInput(content) // Restore input on error
+      mutateMessages()
+    } catch (error) {
+      console.error("Failed to send message:", error)
+      setMessageInput(content)
     } finally {
       setIsSending(false)
     }
   }
 
-  // Edit message
   const handleEditMessage = async (messageId: string) => {
     if (!editContent.trim()) return
 
@@ -275,47 +339,40 @@ export default function TeamWorkspacePage() {
         .eq("id", messageId)
 
       if (error) throw error
-      
       mutateMessages()
       setEditingMessageId(null)
       setEditContent("")
-    } catch (err) {
-      console.error("Failed to edit message:", err)
+    } catch (error) {
+      console.error("Failed to edit message:", error)
     }
   }
 
-  // Delete message
   const handleDeleteMessage = async (messageId: string) => {
-    if (!confirm("Delete this message?")) return
+    if (!window.confirm("Delete this message?")) return
 
     try {
-      const { error } = await supabase
-        .from("channel_messages")
-        .delete()
-        .eq("id", messageId)
+      const { error } = await supabase.from("channel_messages").delete().eq("id", messageId)
 
       if (error) throw error
       mutateMessages()
-    } catch (err) {
-      console.error("Failed to delete message:", err)
+    } catch (error) {
+      console.error("Failed to delete message:", error)
     }
   }
 
-  // Create new channel
   const handleCreateChannel = async () => {
-    if (!newChannelName.trim() || !user) return
+    if (!newChannelName.trim() || !user || !isOwner) return
 
     setIsCreatingChannel(true)
     try {
-      const { error } = await supabase
-        .from("channels")
-        .insert({
-          team_id: teamId,
-          name: newChannelName.trim().toLowerCase().replace(/\s+/g, '-'),
-          description: newChannelDescription.trim() || null,
-          type: 'text',
-          created_by: user.id,
-        })
+      const channelName = cleanChannelName(newChannelName) || "new-channel"
+      const { error } = await supabase.from("channels").insert({
+        team_id: teamId,
+        name: channelName,
+        description: newChannelDescription.trim() || null,
+        type: "text",
+        created_by: user.id,
+      })
 
       if (error) throw error
 
@@ -323,509 +380,437 @@ export default function TeamWorkspacePage() {
       setShowNewChannelDialog(false)
       setNewChannelName("")
       setNewChannelDescription("")
-    } catch (err) {
-      console.error("Failed to create channel:", err)
+    } catch (error) {
+      console.error("Failed to create channel:", error)
     } finally {
       setIsCreatingChannel(false)
     }
   }
 
-  // Loading state
-  if (userLoading || user === undefined) {
+  if (userLoading || user === undefined || teamLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#313338]">
-        <Loader2 className="h-8 w-8 animate-spin text-white" />
+      <div className="min-h-screen bg-background lg:pl-64">
+        <Navigation />
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
       </div>
     )
   }
 
-  if (user === null) {
-    router.push(`/auth/login?redirect=/team/${teamId}`)
-    return null
+  if (user === null) return null
+
+  if (!team) {
+    return (
+      <div className="min-h-screen bg-background lg:pl-64">
+        <Navigation />
+        <main className="mx-auto max-w-2xl px-4 py-16 text-center">
+          <h1 className="text-2xl font-semibold text-foreground">Workspace not found</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            This workspace may have been removed or you may not have access.
+          </p>
+          <Button asChild className="mt-5">
+            <Link href="/teams">Back to My Sparks</Link>
+          </Button>
+        </main>
+      </div>
+    )
   }
 
-  const selectedChannel = channels?.find(c => c.id === selectedChannelId)
-
   return (
-    <TooltipProvider>
-      <div className="flex h-screen bg-[#313338] text-gray-100 overflow-hidden">
-        {/* Left Sidebar - Server/Team List */}
-        <div className="w-[72px] bg-[#1e1f22] flex flex-col items-center py-3 gap-2 flex-shrink-0">
-          {/* Home button */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link href="/teams">
-                <button className="w-12 h-12 rounded-full bg-[#313338] hover:bg-[#5865f2] hover:rounded-2xl transition-all flex items-center justify-center group">
-                  <ArrowLeft className="w-6 h-6 text-[#23a559] group-hover:text-white" />
-                </button>
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>Back to Teams</p>
-            </TooltipContent>
-          </Tooltip>
+    <div className="min-h-screen bg-background lg:pl-64">
+      <Navigation />
 
-          <div className="w-8 h-[2px] bg-[#35363c] rounded-full my-1" />
+      <main className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <Link
+              href="/teams"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to My Sparks
+            </Link>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Badge variant="secondary" className="gap-1">
+                <Sparkles className="h-3.5 w-3.5" />
+                Workspace
+              </Badge>
+              <Badge variant="outline" className="capitalize">
+                {sparkStatus}
+              </Badge>
+              {details.category && <Badge>{details.category}</Badge>}
+            </div>
+            <h1 className="mt-3 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              {sparkTitle}
+            </h1>
+          </div>
 
-          {/* Current Team */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="relative">
-                <div className="w-12 h-12 rounded-[16px] bg-[#5865f2] flex items-center justify-center text-white font-bold text-lg cursor-pointer hover:rounded-xl transition-all">
-                  {team?.project?.title?.[0]?.toUpperCase() || "T"}
-                </div>
-                <div className="absolute -right-1 -bottom-1 w-4 h-4 bg-[#23a559] rounded-full border-2 border-[#1e1f22]" />
+          <Button asChild variant="outline">
+            <Link href={`/project/${team.project_id}`}>View Spark Card</Link>
+          </Button>
+        </div>
+
+        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)_260px]">
+          <aside className="space-y-4">
+            <section className="rounded-lg border border-border bg-card p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <ClipboardList className="h-4 w-4 text-primary" />
+                Spark brief
               </div>
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p>{team?.project?.title || "Team"}</p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">{sparkDescription}</p>
+              <div className="mt-4 space-y-3 text-sm">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Looking for</p>
+                  <p className="mt-1 text-foreground">{details.looking_for || "Someone interested"}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Time</p>
+                  <p className="mt-1 text-foreground">{details.time_availability || "Flexible"}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Vibe</p>
+                  <p className="mt-1 text-foreground">{details.vibe || "Low-pressure start"}</p>
+                </div>
+              </div>
+            </section>
 
-        {/* Channel List Sidebar */}
-        <div className="w-60 bg-[#2b2d31] flex flex-col flex-shrink-0">
-          {/* Team Header */}
-          <div className="h-12 px-4 flex items-center justify-between border-b border-[#1e1f22] shadow-sm">
-            <h2 className="font-semibold text-white truncate">
-              {team?.project?.title || "Team"}
-            </h2>
-            <ChevronDown className="w-5 h-5 text-gray-400" />
-          </div>
-
-          {/* Channels List */}
-          <div className="flex-1 overflow-y-auto py-2">
-            {/* Text Channels Header */}
-            <div className="px-4 py-1 flex items-center gap-1 text-xs font-semibold text-gray-400 uppercase tracking-wider hover:text-gray-300 cursor-pointer">
-              <ChevronDown className="w-3 h-3" />
-              Text Channels
-            </div>
-
-            {/* Channel Items */}
-            <div className="mt-1 space-y-0.5 px-2">
-              {channels?.map((channel) => (
-                <button
-                  key={channel.id}
-                  onClick={() => setSelectedChannelId(channel.id)}
-                  className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-sm transition-colors ${
-                    selectedChannelId === channel.id
-                      ? "bg-[#404249] text-white"
-                      : "text-gray-400 hover:bg-[#35373c] hover:text-gray-200"
-                  }`}
-                >
-                  <Hash className="w-5 h-5 text-gray-400" />
-                  <span className="truncate">{channel.name}</span>
-                  {channel.is_default && (
-                    <Badge variant="secondary" className="ml-auto text-[10px] bg-[#5865f2]/20 text-[#5865f2] border-0">
-                      Default
-                    </Badge>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* Add Channel Button (Owner/Admin only) */}
-            {isOwner && (
-              <button
-                onClick={() => setShowNewChannelDialog(true)}
-                className="mt-2 mx-4 flex items-center gap-2 px-2 py-1.5 text-sm text-gray-400 hover:text-gray-200 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Create Channel
-              </button>
-            )}
-          </div>
-
-          {/* User Panel */}
-          <div className="h-[52px] bg-[#232428] px-2 flex items-center gap-2">
-            <Avatar className="h-8 w-8">
-              <AvatarImage src={user.user_metadata?.avatar_url} />
-              <AvatarFallback className="bg-[#5865f2] text-white text-xs">
-                {user.email?.[0]?.toUpperCase() || "U"}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">
-                {user.user_metadata?.full_name || user.email?.split('@')[0]}
-              </p>
-              <p className="text-xs text-gray-400 truncate">Online</p>
-            </div>
-            <div className="flex items-center gap-1">
-              <button className="p-1.5 hover:bg-[#35363c] rounded text-gray-400 hover:text-white">
-                <Mic className="w-5 h-5" />
-              </button>
-              <button className="p-1.5 hover:bg-[#35363c] rounded text-gray-400 hover:text-white">
-                <Headphones className="w-5 h-5" />
-              </button>
-              <button className="p-1.5 hover:bg-[#35363c] rounded text-gray-400 hover:text-white">
-                <Settings className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col bg-[#313338] min-w-0">
-          {/* Channel Header */}
-          <div className="h-12 px-4 flex items-center justify-between border-b border-[#1e1f22] shadow-sm flex-shrink-0">
-            <div className="flex items-center gap-3">
-              <Hash className="w-6 h-6 text-gray-400" />
-              <div>
-                <h3 className="font-semibold text-white">
-                  {selectedChannel?.name || "general"}
-                </h3>
-                {selectedChannel?.description && (
-                  <p className="text-xs text-gray-400">{selectedChannel.description}</p>
+            <section className="rounded-lg border border-border bg-card p-3">
+              <div className="mb-2 flex items-center justify-between px-1">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Channels</p>
+                {isOwner && (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7"
+                    onClick={() => setShowNewChannelDialog(true)}
+                    aria-label="Create channel"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 )}
               </div>
-            </div>
-            <div className="flex items-center gap-4 text-gray-400">
-              <button className="hover:text-white transition-colors">
-                <Phone className="w-5 h-5" />
-              </button>
-              <button className="hover:text-white transition-colors">
-                <Video className="w-5 h-5" />
-              </button>
-              <button className="hover:text-white transition-colors">
-                <AtSign className="w-5 h-5" />
-              </button>
-              <div className="w-px h-6 bg-[#1e1f22]" />
-              <button className="hover:text-white transition-colors">
-                <User className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
 
-          {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-            {!isTeamMember && (
-              <div className="bg-[#2b2d31] rounded-lg p-4 text-center">
-                <p className="text-gray-400">
-                  You need to join this team to participate in the conversation.
-                </p>
-              </div>
-            )}
-
-            {messages?.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                <Hash className="w-16 h-16 mb-4 text-gray-600" />
-                <h3 className="text-xl font-semibold text-white mb-2">
-                  Welcome to #{selectedChannel?.name || "general"}!
-                </h3>
-                <p className="text-sm">This is the start of the channel.</p>
-              </div>
-            ) : (
-              messages?.map((message, index) => {
-                const prevMessage = messages[index - 1]
-                const isCompact = prevMessage && 
-                  prevMessage.user_id === message.user_id &&
-                  new Date(message.created_at).getTime() - new Date(prevMessage.created_at).getTime() < 600000 // 10 minutes
-
-                const isOwnMessage = message.user_id === user.id
-
-                if (isCompact) {
-                  return (
-                    <div key={message.id} className="group flex gap-4 hover:bg-[#2e3035]/50 rounded px-2 -mx-2">
-                      <div className="w-10 flex-shrink-0 text-right">
-                        <span className="text-[10px] text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              <div className="space-y-1">
+                {channels && channels.length > 0 ? (
+                  channels.map((channel) => (
+                    <button
+                      key={channel.id}
+                      type="button"
+                      onClick={() => setSelectedChannelId(channel.id)}
+                      className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                        activeChannelId === channel.id
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      }`}
+                    >
+                      <Hash className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{channel.name}</span>
+                      {channel.is_default && (
+                        <span className="ml-auto rounded-full bg-background/20 px-1.5 py-0.5 text-[10px]">
+                          main
                         </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        {editingMessageId === message.id ? (
-                          <div className="flex gap-2">
-                            <Input
-                              value={editContent}
-                              onChange={(e) => setEditContent(e.target.value)}
-                              className="flex-1 bg-[#383a40] border-0 text-white"
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleEditMessage(message.id)
-                                if (e.key === 'Escape') {
-                                  setEditingMessageId(null)
-                                  setEditContent("")
-                                }
-                              }}
-                              autoFocus
-                            />
-                            <Button size="sm" onClick={() => handleEditMessage(message.id)}>Save</Button>
-                            <Button size="sm" variant="ghost" onClick={() => {
-                              setEditingMessageId(null)
-                              setEditContent("")
-                            }}>Cancel</Button>
+                      )}
+                    </button>
+                  ))
+                ) : (
+                  <div className="rounded-md border border-dashed border-border p-4 text-center">
+                    <Hash className="mx-auto h-5 w-5 text-muted-foreground" />
+                    <p className="mt-2 text-sm font-medium text-foreground">No channel yet</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Create one to start the workspace.</p>
+                    {isOwner && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="mt-3"
+                        onClick={() => setShowNewChannelDialog(true)}
+                      >
+                        Create Channel
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+          </aside>
+
+          <section className="flex min-h-[620px] min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
+            <div className="flex min-h-16 items-center justify-between gap-3 border-b border-border px-4 py-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <MessageSquare className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <Hash className="h-4 w-4 text-muted-foreground" />
+                    <h2 className="truncate text-sm font-semibold text-foreground">
+                      {selectedChannel?.name || "general"}
+                    </h2>
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {selectedChannel?.description || "Use this space to decide what happens next."}
+                  </p>
+                </div>
+              </div>
+              <Badge variant="outline" className="shrink-0">
+                {memberCount} people
+              </Badge>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
+              {!isWorkspaceMember && (
+                <div className="mb-4 rounded-lg border border-dashed border-border bg-secondary/40 p-4 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    This workspace opens after a Spark becomes a Match.
+                  </p>
+                </div>
+              )}
+
+              {messages && messages.length > 0 ? (
+                <div className="space-y-5">
+                  {messages.map((message) => {
+                    const isOwnMessage = message.user_id === user.id
+
+                    return (
+                      <div key={message.id} className="group flex gap-3">
+                        <Avatar className="h-9 w-9 shrink-0">
+                          <AvatarImage src={message.user?.avatar_url || ""} />
+                          <AvatarFallback className="bg-primary/10 text-primary">
+                            {getInitial(message.user?.full_name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span className="text-sm font-medium text-foreground">
+                              {message.user?.full_name || "Ignit user"}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+                            </span>
+                            {message.edited_at && <span className="text-xs text-muted-foreground">edited</span>}
                           </div>
-                        ) : (
-                          <div className="flex items-start gap-2">
-                            <p className="text-gray-200 whitespace-pre-wrap break-words">{message.content}</p>
-                            {message.edited_at && (
-                              <span className="text-[10px] text-gray-500">(edited)</span>
-                            )}
+
+                          {editingMessageId === message.id ? (
+                            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                              <Input
+                                value={editContent}
+                                onChange={(event) => setEditContent(event.target.value)}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") handleEditMessage(message.id)
+                                  if (event.key === "Escape") {
+                                    setEditingMessageId(null)
+                                    setEditContent("")
+                                  }
+                                }}
+                                autoFocus
+                              />
+                              <div className="flex gap-2">
+                                <Button size="sm" onClick={() => handleEditMessage(message.id)}>
+                                  Save
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingMessageId(null)
+                                    setEditContent("")
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
+                              {message.content}
+                            </p>
+                          )}
+                        </div>
+
+                        {isOwnMessage && editingMessageId !== message.id && (
+                          <div className="flex shrink-0 gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={() => {
+                                setEditingMessageId(message.id)
+                                setEditContent(message.content)
+                              }}
+                              aria-label="Edit message"
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => handleDeleteMessage(message.id)}
+                              aria-label="Delete message"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         )}
                       </div>
-                      {isOwnMessage && editingMessageId !== message.id && (
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                          <button
-                            onClick={() => {
-                              setEditingMessageId(message.id)
-                              setEditContent(message.content)
-                            }}
-                            className="p-1 hover:bg-[#404249] rounded text-gray-400 hover:text-white"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMessage(message.id)}
-                            className="p-1 hover:bg-[#404249] rounded text-gray-400 hover:text-red-400"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )
-                }
-
-                return (
-                  <div key={message.id} className="group flex gap-4 pt-2 hover:bg-[#2e3035]/50 rounded px-2 -mx-2">
-                    <Avatar className="w-10 h-10 flex-shrink-0">
-                      <AvatarImage src={message.user?.avatar_url || ""} />
-                      <AvatarFallback className="bg-[#5865f2] text-white">
-                        {message.user?.full_name?.[0]?.toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-white hover:underline cursor-pointer">
-                          {message.user?.full_name || "Unknown User"}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-                        </span>
-                      </div>
-                      {editingMessageId === message.id ? (
-                        <div className="flex gap-2 mt-1">
-                          <Input
-                            value={editContent}
-                            onChange={(e) => setEditContent(e.target.value)}
-                            className="flex-1 bg-[#383a40] border-0 text-white"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleEditMessage(message.id)
-                              if (e.key === 'Escape') {
-                                setEditingMessageId(null)
-                                setEditContent("")
-                              }
-                            }}
-                            autoFocus
-                          />
-                          <Button size="sm" onClick={() => handleEditMessage(message.id)}>Save</Button>
-                          <Button size="sm" variant="ghost" onClick={() => {
-                            setEditingMessageId(null)
-                            setEditContent("")
-                          }}>Cancel</Button>
-                        </div>
-                      ) : (
-                        <div className="flex items-start gap-2">
-                          <p className="text-gray-200 whitespace-pre-wrap break-words">{message.content}</p>
-                          {message.edited_at && (
-                            <span className="text-[10px] text-gray-500">(edited)</span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    {isOwnMessage && editingMessageId !== message.id && (
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-                        <button
-                          onClick={() => {
-                            setEditingMessageId(message.id)
-                            setEditContent(message.content)
-                          }}
-                          className="p-1 hover:bg-[#404249] rounded text-gray-400 hover:text-white"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteMessage(message.id)}
-                          className="p-1 hover:bg-[#404249] rounded text-gray-400 hover:text-red-400"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )
-              })
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Message Input */}
-          <div className="px-4 pb-6 flex-shrink-0">
-            <form onSubmit={handleSendMessage} className="relative">
-              <div className="bg-[#383a40] rounded-lg flex items-end gap-2 p-3">
-                <button
-                  type="button"
-                  className="p-2 text-gray-400 hover:text-white hover:bg-[#404249] rounded-full transition-colors flex-shrink-0"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      handleSendMessage()
-                    }
-                  }}
-                  placeholder={isTeamMember 
-                    ? `Message #${selectedChannel?.name || "general"}` 
-                    : "Join the team to send messages"
-                  }
-                  disabled={!isTeamMember || isSending}
-                  className="flex-1 bg-transparent text-white placeholder-gray-400 outline-none min-h-[24px] max-h-[200px] resize-none disabled:cursor-not-allowed"
-                />
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    type="button"
-                    className="p-2 text-gray-400 hover:text-white hover:bg-[#404249] rounded-full transition-colors"
-                  >
-                    <Paperclip className="w-5 h-5" />
-                  </button>
-                  <button
-                    type="button"
-                    className="p-2 text-gray-400 hover:text-white hover:bg-[#404249] rounded-full transition-colors"
-                  >
-                    <Smile className="w-5 h-5" />
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!messageInput.trim() || !isTeamMember || isSending}
-                    className="p-2 text-[#5865f2] hover:bg-[#5865f2]/10 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Send className="w-5 h-5" />
-                  </button>
+                    )
+                  })}
+                  <div ref={messagesEndRef} />
                 </div>
+              ) : (
+                <div className="flex h-full min-h-[360px] flex-col items-center justify-center text-center">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <MessageSquare className="h-6 w-6" />
+                  </div>
+                  <h3 className="mt-4 text-lg font-semibold text-foreground">Start the workspace</h3>
+                  <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
+                    Say hello, pick the first tiny step, and make the Spark real.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={handleSendMessage} className="border-t border-border p-3">
+              <div className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2">
+                <Input
+                  value={messageInput}
+                  onChange={(event) => setMessageInput(event.target.value)}
+                  placeholder={
+                    isWorkspaceMember && activeChannelId
+                      ? `Message #${selectedChannel?.name || "general"}`
+                      : "Workspace chat opens after a Match"
+                  }
+                  disabled={!isWorkspaceMember || !activeChannelId || isSending}
+                  className="h-9 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                />
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={!messageInput.trim() || !isWorkspaceMember || !activeChannelId || isSending}
+                  aria-label="Send message"
+                >
+                  {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </Button>
               </div>
             </form>
-          </div>
-        </div>
+          </section>
 
-        {/* Right Sidebar - Members List */}
-        <div className="w-60 bg-[#2b2d31] hidden lg:flex flex-col flex-shrink-0">
-          <div className="h-12 px-4 flex items-center border-b border-[#1e1f22]">
-            <h3 className="font-semibold text-gray-300 text-sm uppercase tracking-wider">
-              Members — {members?.length || 0}
-            </h3>
-          </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-            {/* Owner */}
-            {team?.project?.owner_id && (
-              <div className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-[#35373c] cursor-pointer group">
-                <div className="relative">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={members?.find(m => m.user_id === team.project.owner_id)?.user?.avatar_url || ""} />
-                    <AvatarFallback className="bg-[#f59e0b] text-white text-xs">
-                      {members?.find(m => m.user_id === team.project.owner_id)?.user?.full_name?.[0]?.toUpperCase() || "O"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#23a559] rounded-full border-2 border-[#2b2d31]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white font-medium truncate group-hover:text-gray-200">
-                    {members?.find(m => m.user_id === team.project.owner_id)?.user?.full_name || "Owner"}
-                  </p>
-                  <p className="text-xs text-[#f59e0b]">Owner</p>
-                </div>
+          <aside className="space-y-4">
+            <section className="rounded-lg border border-border bg-card p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Users className="h-4 w-4 text-primary" />
+                People
               </div>
-            )}
 
-            {/* Members */}
-            {members?.filter(m => m.user_id !== team?.project?.owner_id).map((member) => (
-              <div 
-                key={member.id} 
-                className="flex items-center gap-3 px-2 py-1.5 rounded hover:bg-[#35373c] cursor-pointer group"
-              >
-                <div className="relative">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={member.user?.avatar_url || ""} />
-                    <AvatarFallback className="bg-[#5865f2] text-white text-xs">
-                      {member.user?.full_name?.[0]?.toUpperCase() || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#23a559] rounded-full border-2 border-[#2b2d31]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-300 truncate group-hover:text-white">
-                    {member.user?.full_name || "Unknown"}
-                  </p>
-                  <p className="text-xs text-gray-500 capitalize">{member.role}</p>
-                </div>
+              <div className="mt-4 space-y-3">
+                {ownerProfile && (
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={ownerProfile.avatar_url || ""} />
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {getInitial(ownerProfile.full_name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {ownerProfile.full_name || "Owner"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Started this Spark</p>
+                    </div>
+                  </div>
+                )}
+
+                {visibleMembers.map((member) => (
+                  <div key={member.id} className="flex items-center gap-3">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={member.user?.avatar_url || ""} />
+                      <AvatarFallback className="bg-secondary text-secondary-foreground">
+                        {getInitial(member.user?.full_name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {member.user?.full_name || "Ignit user"}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">{member.role || "Interested"}</p>
+                    </div>
+                  </div>
+                ))}
+
+                {!ownerProfile && visibleMembers.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No one is in this workspace yet.</p>
+                )}
               </div>
-            ))}
-          </div>
-        </div>
+            </section>
 
-        {/* New Channel Dialog */}
-        <Dialog open={showNewChannelDialog} onOpenChange={setShowNewChannelDialog}>
-          <DialogContent className="bg-[#313338] border-[#1e1f22] text-white">
-            <DialogHeader>
-              <DialogTitle>Create Channel</DialogTitle>
-              <DialogDescription className="text-gray-400">
-                Create a new text channel for your team.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block">
-                  Channel Name
+            <section className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Sparkles className="h-4 w-4 text-primary" />
+                First move
+              </div>
+              <p className="mt-3 text-sm leading-6 text-foreground">{firstMove}</p>
+              <div className="mt-4 space-y-2 text-sm text-muted-foreground">
+                <label className="flex items-start gap-2">
+                  <input type="checkbox" className="mt-1 accent-primary" />
+                  <span>Say what you can do this week.</span>
                 </label>
-                <div className="relative">
-                  <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input
-                    value={newChannelName}
-                    onChange={(e) => setNewChannelName(e.target.value)}
-                    placeholder="new-channel"
-                    className="pl-9 bg-[#1e1f22] border-[#1e1f22] text-white placeholder-gray-500"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-300 mb-2 block">
-                  Description <span className="text-gray-500">(optional)</span>
+                <label className="flex items-start gap-2">
+                  <input type="checkbox" className="mt-1 accent-primary" />
+                  <span>Pick one concrete next step.</span>
                 </label>
+                <label className="flex items-start gap-2">
+                  <input type="checkbox" className="mt-1 accent-primary" />
+                  <span>Decide when to start.</span>
+                </label>
+              </div>
+            </section>
+          </aside>
+        </div>
+      </main>
+
+      <Dialog open={showNewChannelDialog} onOpenChange={setShowNewChannelDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create channel</DialogTitle>
+            <DialogDescription>
+              Add a focused space for planning, links, or a specific part of this Spark.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">Channel name</label>
+              <div className="relative">
+                <Hash className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  value={newChannelDescription}
-                  onChange={(e) => setNewChannelDescription(e.target.value)}
-                  placeholder="What's this channel about?"
-                  className="bg-[#1e1f22] border-[#1e1f22] text-white placeholder-gray-500"
+                  value={newChannelName}
+                  onChange={(event) => setNewChannelName(event.target.value)}
+                  placeholder="planning"
+                  className="pl-9"
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button
-                variant="ghost"
-                onClick={() => setShowNewChannelDialog(false)}
-                className="text-gray-300 hover:text-white hover:bg-[#404249]"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleCreateChannel}
-                disabled={!newChannelName.trim() || isCreatingChannel}
-                className="bg-[#5865f2] hover:bg-[#4752c4] text-white"
-              >
-                {isCreatingChannel ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  "Create Channel"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </TooltipProvider>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">Description</label>
+              <Input
+                value={newChannelDescription}
+                onChange={(event) => setNewChannelDescription(event.target.value)}
+                placeholder="What should people use this for?"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setShowNewChannelDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateChannel} disabled={!newChannelName.trim() || isCreatingChannel}>
+              {isCreatingChannel ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Channel"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   )
 }

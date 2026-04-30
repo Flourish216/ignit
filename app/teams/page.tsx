@@ -473,7 +473,7 @@ export default function TeamsPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">My Sparks</h1>
           <p className="mt-1 text-muted-foreground">
-            Review interest, see what you posted, and open chats when a Spark becomes a Match.
+            Review interest, see what you posted, and open workspaces when a Spark becomes a Match.
           </p>
         </div>
 
@@ -550,7 +550,7 @@ export default function TeamsPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           {project.teams?.[0]?.id && (
                             <Button asChild size="sm">
-                              <Link href={`/team/${project.teams[0].id}`}>Open Chat</Link>
+                              <Link href={`/team/${project.teams[0].id}`}>Open Workspace</Link>
                             </Button>
                           )}
                           <Button asChild size="sm" variant="outline">
@@ -573,7 +573,7 @@ export default function TeamsPage() {
                           <p className="text-xs text-muted-foreground">Next step</p>
                           <p className="mt-1 text-sm text-foreground">
                             {project.teams?.[0]?.team_members?.length > 0
-                              ? "Open the chat and decide the first concrete step."
+                              ? "Open the workspace and decide the first concrete step."
                               : "Review interest or share this Spark with someone who might be down."}
                           </p>
                         </div>
@@ -614,7 +614,7 @@ export default function TeamsPage() {
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary">{membership.team?.project?.status}</Badge>
                           {membership.team?.id && (
-                            <Button asChild size="sm"><Link href={`/team/${membership.team.id}`}>Open Chat</Link></Button>
+                            <Button asChild size="sm"><Link href={`/team/${membership.team.id}`}>Open Workspace</Link></Button>
                           )}
                         </div>
                       </div>
