@@ -479,17 +479,8 @@ export default function ProfilePage() {
                 {companionLines.map((line, index) => (
                   <div
                     key={`${line}-${index}`}
-                    className={`absolute z-20 inline-flex w-fit max-w-[min(220px,calc(100%-2rem))] items-center rounded-2xl border bg-background/90 px-3.5 py-2 text-xs font-medium leading-snug backdrop-blur [animation:igni-drift-right_7.5s_ease-in-out_infinite] sm:max-w-[230px] ${floatingPositions[index]} ${
-                      hasCompanionContext
-                        ? "border-primary/30 text-foreground shadow-[0_10px_28px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10"
-                        : "border-dashed border-muted-foreground/30 text-muted-foreground/60 shadow-[0_10px_24px_hsl(var(--muted)/0.9)]"
-                    }`}
+                    className={`igni-pixel-cloud z-20 ${hasCompanionContext ? "" : "is-empty"} ${floatingPositions[index]}`}
                   >
-                    <span
-                      className={`absolute -bottom-1 left-6 h-2.5 w-2.5 rotate-45 border-b border-r bg-background ${
-                        hasCompanionContext ? "border-primary/30" : "border-muted-foreground/30"
-                      }`}
-                    />
                     <span className="relative z-10 whitespace-normal">{line}</span>
                   </div>
                 ))}

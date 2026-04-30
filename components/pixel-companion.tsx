@@ -59,20 +59,25 @@ export function PixelCompanion({ className, color = "indigo" }: PixelCompanionPr
   return (
     <div className={cn("relative h-64 w-64", className)}>
       <div className="absolute inset-6 rounded-full bg-primary/10 blur-2xl" />
-      <div className="absolute inset-x-8 bottom-9 h-8 rounded-full bg-slate-950/10 blur-md" />
-      <div className="relative mx-auto grid w-48 grid-cols-12 gap-0 pt-6 [image-rendering:pixelated]">
-        {companionPixels.flatMap((row, rowIndex) =>
-          row.split("").map((pixel, colIndex) => (
-            <div
-              key={`${rowIndex}-${colIndex}`}
-              className={cn("aspect-square", colorMap[pixel] || "bg-transparent")}
-            />
-          ))
-        )}
+      <div className="absolute left-1/2 bottom-9 h-8 w-40 rounded-full bg-slate-950/20 blur-md [animation:igni-shadow_3.6s_ease-in-out_infinite]" />
+      <div className="relative mx-auto h-full w-56 [animation:igni-idle_3.6s_ease-in-out_infinite]">
+        <div className="absolute left-8 top-8 h-2 w-2 bg-primary [animation:igni-spark_2.8s_ease-in-out_infinite]" />
+        <div className="absolute right-9 top-14 h-3 w-3 bg-indigo-300 [animation:igni-spark_3.4s_ease-in-out_infinite_0.4s]" />
+        <div className="absolute left-5 top-32 h-2 w-2 bg-sky-200 [animation:igni-spark_3.1s_ease-in-out_infinite_0.8s]" />
+        <div className="relative mx-auto grid w-48 grid-cols-12 gap-0 pt-6 [image-rendering:pixelated]">
+          {companionPixels.flatMap((row, rowIndex) =>
+            row.split("").map((pixel, colIndex) => (
+              <div
+                key={`${rowIndex}-${colIndex}`}
+                className={cn("aspect-square", colorMap[pixel] || "bg-transparent")}
+              />
+            ))
+          )}
+        </div>
+        <div className="absolute left-1/2 top-44 h-8 w-32 -translate-x-1/2 border-4 border-slate-950 bg-sky-200" />
+        <div className="absolute left-[64px] top-[178px] h-3 w-3 bg-slate-950" />
+        <div className="absolute right-[64px] top-[178px] h-3 w-3 bg-slate-950" />
       </div>
-      <div className="absolute left-1/2 top-44 h-8 w-32 -translate-x-1/2 border-4 border-slate-950 bg-sky-200" />
-      <div className="absolute left-[72px] top-[178px] h-3 w-3 bg-slate-950" />
-      <div className="absolute right-[72px] top-[178px] h-3 w-3 bg-slate-950" />
     </div>
   )
 }

@@ -133,3 +133,109 @@
     transform: translate3d(var(--igni-travel, 32px), -5px, 0);
   }
 }
+
+@keyframes igni-idle {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate3d(0, -6px, 0) rotate(-1deg);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0) rotate(0deg);
+  }
+  75% {
+    transform: translate3d(0, -5px, 0) rotate(1deg);
+  }
+}
+
+@keyframes igni-shadow {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: translateX(-50%) scaleX(1);
+  }
+  50% {
+    opacity: 0.11;
+    transform: translateX(-50%) scaleX(0.82);
+  }
+}
+
+@keyframes igni-spark {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    opacity: 1;
+    transform: translate3d(0, -4px, 0);
+  }
+}
+
+.igni-pixel-cloud {
+  position: absolute;
+  display: inline-flex;
+  width: fit-content;
+  max-width: min(220px, calc(100% - 2rem));
+  align-items: center;
+  border: 2px solid color-mix(in oklab, var(--primary) 36%, transparent);
+  border-radius: 0;
+  background: color-mix(in oklab, var(--background) 94%, white 6%);
+  padding: 0.55rem 0.85rem;
+  color: var(--foreground);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+  box-shadow:
+    4px 4px 0 color-mix(in oklab, var(--primary) 20%, transparent),
+    0 14px 30px color-mix(in oklab, var(--primary) 15%, transparent);
+  backdrop-filter: blur(8px);
+  image-rendering: pixelated;
+  animation: igni-drift-right 7.5s ease-in-out infinite;
+}
+
+.igni-pixel-cloud::before,
+.igni-pixel-cloud::after {
+  content: "";
+  position: absolute;
+  display: block;
+  background: inherit;
+  border: 2px solid color-mix(in oklab, var(--primary) 36%, transparent);
+  image-rendering: pixelated;
+}
+
+.igni-pixel-cloud::before {
+  left: 14px;
+  top: -8px;
+  width: 18px;
+  height: 8px;
+  border-bottom: 0;
+  box-shadow:
+    34px 0 0 -2px color-mix(in oklab, var(--background) 94%, white 6%),
+    34px -2px 0 -2px color-mix(in oklab, var(--background) 94%, white 6%);
+}
+
+.igni-pixel-cloud::after {
+  left: 24px;
+  bottom: -8px;
+  width: 10px;
+  height: 10px;
+  border-left: 0;
+  border-top: 0;
+}
+
+.igni-pixel-cloud.is-empty {
+  border-style: dashed;
+  border-color: color-mix(in oklab, var(--muted-foreground) 34%, transparent);
+  color: color-mix(in oklab, var(--muted-foreground) 72%, transparent);
+  box-shadow:
+    4px 4px 0 color-mix(in oklab, var(--muted) 85%, transparent),
+    0 12px 24px color-mix(in oklab, var(--muted) 70%, transparent);
+}
+
+.igni-pixel-cloud.is-empty::before,
+.igni-pixel-cloud.is-empty::after {
+  border-color: color-mix(in oklab, var(--muted-foreground) 34%, transparent);
+}
