@@ -15,7 +15,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-background lg:pl-64">
       <Navigation />
       <main>
-        <section className="px-4 pb-12 pt-12 sm:px-6 lg:px-8">
+        <section className="px-4 pb-12 pt-20 sm:px-6 sm:pt-24 lg:px-8 lg:pt-28">
           <div className="mx-auto max-w-4xl">
             <div className="mx-auto max-w-2xl text-center">
               <h1 className="text-balance text-5xl font-semibold tracking-tight text-foreground sm:text-6xl">
@@ -26,7 +26,7 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="mt-10 flex justify-center">
+            <div className="mt-12 flex justify-center sm:mt-14">
               <IdeaInput />
             </div>
 
