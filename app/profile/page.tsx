@@ -254,7 +254,7 @@ export default function ProfilePage() {
       setGeneratedLines(Array.isArray(data.lines) ? data.lines : [])
     } catch (error) {
       console.error("Error generating companion lines:", error)
-      setSaveError("Could not generate Companion lines right now.")
+      setSaveError("Could not generate Igni lines right now.")
     } finally {
       setIsGenerating(false)
     }
@@ -285,7 +285,7 @@ export default function ProfilePage() {
           <div>
             <h1 className="text-3xl font-semibold tracking-tight text-foreground">Profile</h1>
             <p className="mt-1 text-muted-foreground">
-              Describe yourself and what you want to start. Ignit turns that into your Companion voice.
+              Describe yourself and what you want to start. Ignit turns that into Igni's voice.
             </p>
           </div>
           {isEditing ? (
@@ -418,9 +418,9 @@ export default function ProfilePage() {
                   <div>
                     <Badge variant="secondary" className="gap-2">
                       <Gamepad2 className="h-3.5 w-3.5" />
-                      Companion
+                      Igni
                     </Badge>
-                    <h2 className="mt-3 text-2xl font-semibold text-foreground">AI companion voice</h2>
+                    <h2 className="mt-3 text-2xl font-semibold text-foreground">Igni voice</h2>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Generated from your own words and Sparks, not from self-selected labels.
                     </p>
@@ -462,7 +462,7 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">My Sparks</h2>
-                <p className="mt-1 text-sm text-muted-foreground">These give your Companion context.</p>
+                <p className="mt-1 text-sm text-muted-foreground">These give Igni context.</p>
               </div>
               <Button asChild size="sm">
                 <Link href="/create">Create Spark</Link>

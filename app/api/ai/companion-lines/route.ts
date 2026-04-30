@@ -24,11 +24,11 @@ export async function POST(request: Request) {
     const isChinese = /[\u4e00-\u9fa5]/.test(profileText)
     const responseLanguage = isChinese ? "Simplified Chinese" : "English"
 
-    const systemPrompt = `You write short floating speech lines for Ignit pixel Companions.
+    const systemPrompt = `You write short floating speech lines for Igni, the user's pixel companion in Ignit.
 
 Ignit helps people find someone to start something with. It is not a dating app, not LinkedIn, and not a generic social feed.
 
-The user should not label themselves with tags. Read their paragraph and Sparks, then infer 6 short natural lines that a Companion could say around the character.
+The user should not label themselves with tags. Read their paragraph and Sparks, then infer 6 short natural lines that Igni could say around the character.
 
 Rules:
 - Respond in ${responseLanguage}.
