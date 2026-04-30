@@ -24,7 +24,7 @@ import {
 import { createClient } from "@/lib/supabase/client"
 import useSWR, { mutate } from "swr"
 import Link from "next/link"
-import { ProjectCard } from "@/components/project-card"
+import { IntentCard } from "@/components/intent-card"
 
 const availableSkills = [
   // 创意与内容
@@ -257,9 +257,9 @@ export default function ProfilePage() {
 
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground">Builder Profile</h1>
+          <h1 className="text-3xl font-bold text-foreground">Buddy Profile</h1>
           <p className="mt-1 text-muted-foreground">
-            Show what you can do, what you want to build, and when you are available.
+            Show what you are into, where you are, and what you are open to doing.
           </p>
         </div>
 
@@ -296,11 +296,11 @@ export default function ProfilePage() {
                       />
                     </div>
                     <div>
-                      <label className="text-sm font-medium">What are you looking for?</label>
+                      <label className="text-sm font-medium">What are you open to?</label>
                       <Input
                         value={editForm.current_goals}
                         onChange={(e) => setEditForm({ ...editForm, current_goals: e.target.value })}
-                        placeholder="e.g. Looking for a co-founder for a SaaS idea"
+                        placeholder="e.g. Study buddy, gym partner, concerts, casual side projects"
                         className="mt-1"
                       />
                     </div>
@@ -361,7 +361,7 @@ export default function ProfilePage() {
                       <div className="mt-4 flex flex-wrap gap-3">
                         {profile?.current_goals && (
                           <div className="rounded-lg bg-primary/5 border border-primary/20 px-3 py-2 text-sm">
-                            <span className="text-xs font-medium text-primary block mb-0.5">Looking for</span>
+                            <span className="text-xs font-medium text-primary block mb-0.5">Open to</span>
                             <span className="text-foreground">{profile.current_goals}</span>
                           </div>
                         )}
@@ -396,13 +396,13 @@ export default function ProfilePage() {
 
                     <div className="mt-5 grid gap-3 sm:grid-cols-3">
                       <div className="rounded-lg border border-border bg-secondary/30 p-3">
-                        <p className="text-xs font-medium text-muted-foreground">I can help with</p>
+                        <p className="text-xs font-medium text-muted-foreground">I’m good at</p>
                         <p className="mt-1 text-sm font-semibold text-foreground">
                           {profile?.skills?.length ? `${profile.skills.length} skills` : "Add skills"}
                         </p>
                       </div>
                       <div className="rounded-lg border border-border bg-secondary/30 p-3">
-                        <p className="text-xs font-medium text-muted-foreground">I want to build</p>
+                        <p className="text-xs font-medium text-muted-foreground">I’m open to</p>
                         <p className="mt-1 line-clamp-1 text-sm font-semibold text-foreground">
                           {profile?.current_goals || "Add a goal"}
                         </p>
@@ -479,27 +479,27 @@ export default function ProfilePage() {
               <div>
                 <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
                   <FolderOpen className="h-4 w-4 text-primary" />
-                  Projects I started
+                  Intents I posted
                 </h2>
-                <p className="mt-1 text-sm text-muted-foreground">Ideas you turned into public project briefs.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Things you want to do with someone else.</p>
               </div>
               <Badge variant="secondary">{myProjects?.length || 0}</Badge>
             </div>
             {myProjects && myProjects.length > 0 ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 {myProjects.map((project) => (
-                  <ProjectCard key={project.id} project={project} />
+                  <IntentCard key={project.id} intent={project} />
                 ))}
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-border p-8 text-center">
                 <FolderOpen className="mx-auto h-10 w-10 text-muted-foreground" />
-                <h3 className="mt-3 font-semibold text-foreground">No projects yet</h3>
-                <p className="mt-1 text-sm text-muted-foreground">Start your first project and find collaborators.</p>
+                <h3 className="mt-3 font-semibold text-foreground">No intents yet</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Post something you want to do.</p>
                 <Button asChild className="mt-4">
                   <Link href="/create">
                     <Plus className="mr-2 h-4 w-4" />
-                    Create Project
+                    New Intent
                   </Link>
                 </Button>
               </div>
@@ -511,9 +511,9 @@ export default function ProfilePage() {
               <div>
                 <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
                   <Users className="h-4 w-4 text-primary" />
-                  Teams I joined
+                  Things I joined
                 </h2>
-                <p className="mt-1 text-sm text-muted-foreground">Projects where you are part of the working team.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Intents where the other person accepted your interest.</p>
               </div>
               <Badge variant="secondary">{joinedTeams?.length || 0}</Badge>
             </div>
@@ -544,10 +544,10 @@ export default function ProfilePage() {
             ) : (
               <div className="rounded-lg border border-dashed border-border p-8 text-center">
                 <Users className="mx-auto h-10 w-10 text-muted-foreground" />
-                <h3 className="mt-3 font-semibold text-foreground">Not in any teams yet</h3>
-                <p className="mt-1 text-sm text-muted-foreground">Explore projects and join teams that match your skills.</p>
+                <h3 className="mt-3 font-semibold text-foreground">Nothing joined yet</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Browse intents and say you are interested.</p>
                 <Button asChild className="mt-4">
-                  <Link href="/explore">Explore Projects</Link>
+                  <Link href="/explore">Browse Intents</Link>
                 </Button>
               </div>
             )}

@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Sparkles, ArrowRight, Loader2 } from "lucide-react"
+import { ArrowRight, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useLanguage } from "@/lib/i18n/context"
 
@@ -34,13 +34,12 @@ export function IdeaInput({ className, placeholder, showExamples = true }: IdeaI
   return (
     <div className={cn("w-full max-w-2xl", className)}>
       <div className="relative">
-        <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 blur-lg" />
-        <div className="relative rounded-xl border border-border bg-card p-1 shadow-lg">
+        <div className="relative rounded-xl border border-border bg-card p-1 shadow-sm">
           <Textarea
             value={idea}
             onChange={(e) => setIdea(e.target.value)}
             placeholder={placeholder || t.ideaInput.placeholder}
-            className="min-h-[120px] resize-none border-0 bg-transparent text-base focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="min-h-[116px] resize-none border-0 bg-transparent text-base focus-visible:ring-0 focus-visible:ring-offset-0"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault()
@@ -49,10 +48,7 @@ export function IdeaInput({ className, placeholder, showExamples = true }: IdeaI
             }}
           />
           <div className="flex flex-col gap-3 border-t border-border/50 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>{t.ideaInput.helper}</span>
-            </div>
+            <p className="text-xs text-muted-foreground">{t.ideaInput.helper}</p>
             <Button
               onClick={handleSubmit}
               disabled={!idea.trim() || isLoading}

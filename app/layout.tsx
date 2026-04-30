@@ -8,8 +8,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Ignit - Human-First, AI-Assisted Project Platform',
-  description: 'Transform your ideas into reality. Describe your project, let AI break it down, and connect with the right people to build together.',
+  title: 'Ignit - Don’t start alone',
+  description: 'Tell Ignit what you want to do. Find someone who wants to do it too.',
   icons: {
     icon: [
       {

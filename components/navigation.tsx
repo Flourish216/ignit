@@ -80,7 +80,7 @@ export function Navigation() {
           {align === "start" && (
             <div className="min-w-0 text-left">
               <div className="truncate text-sm font-medium text-foreground">
-                {profile?.full_name || "Builder"}
+                {profile?.full_name || "User"}
               </div>
               <div className="truncate text-xs text-muted-foreground">{user?.email}</div>
             </div>
@@ -96,7 +96,7 @@ export function Navigation() {
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <span className="block truncate text-sm font-medium">{profile?.full_name || "Builder"}</span>
+            <span className="block truncate text-sm font-medium">{profile?.full_name || "User"}</span>
             <span className="block truncate text-xs text-muted-foreground">{user?.email}</span>
           </div>
         </div>

@@ -434,9 +434,9 @@ export default function TeamsPage() {
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Project Start</h1>
+          <h1 className="text-3xl font-bold text-foreground">My Intents</h1>
           <p className="mt-1 text-muted-foreground">
-            Review applications, open workspaces, and keep accepted teams moving
+            Review interest, see what you posted, and open chats when something starts.
           </p>
         </div>
 
@@ -450,10 +450,10 @@ export default function TeamsPage() {
                 </div>
                 <div>
                   <p className="font-medium text-foreground">
-                    {pendingApplications.length} pending application{pendingApplications.length > 1 ? "s" : ""}
+                    {pendingApplications.length} new interest{pendingApplications.length > 1 ? "s" : ""}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    People want to join your projects
+                    People responded to your intents.
                   </p>
                 </div>
               </div>
@@ -467,9 +467,9 @@ export default function TeamsPage() {
         <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
           <aside className="rounded-lg border border-border bg-card p-2 lg:sticky lg:top-24 lg:self-start">
             {[
-              { id: "owned", label: "My Projects", detail: "Workspaces you own", icon: FolderOpen, count: myProjects?.length || 0 },
-              { id: "member", label: "Joined Teams", detail: "Workspaces you joined", icon: Users, count: myMemberships?.length || 0 },
-              { id: "applications", label: "Applications", detail: "People asking to join", icon: Mail, count: pendingApplications?.length || 0 },
+              { id: "owned", label: "Posted Intents", detail: "Things you started", icon: FolderOpen, count: myProjects?.length || 0 },
+              { id: "member", label: "Started Together", detail: "Accepted intents", icon: Users, count: myMemberships?.length || 0 },
+              { id: "applications", label: "Interest", detail: "People who responded", icon: Mail, count: pendingApplications?.length || 0 },
             ].map((item) => {
               const Icon = item.icon
               const isActive = activeView === item.id
@@ -513,7 +513,7 @@ export default function TeamsPage() {
                         <div className="flex flex-wrap items-center gap-2">
                           {project.teams?.[0]?.id && (
                             <Button asChild size="sm">
-                              <Link href={`/team/${project.teams[0].id}`}>Open Workspace</Link>
+                              <Link href={`/team/${project.teams[0].id}`}>Open Chat</Link>
                             </Button>
                           )}
                           <Button asChild size="sm" variant="outline">
@@ -527,17 +527,17 @@ export default function TeamsPage() {
 
                       <div className="mt-4 grid gap-3 sm:grid-cols-3">
                         <div className="rounded-md bg-secondary/50 p-3">
-                          <p className="text-xs text-muted-foreground">Team</p>
+                          <p className="text-xs text-muted-foreground">People</p>
                           <p className="mt-1 text-sm font-medium text-foreground">
-                            {project.teams?.[0]?.team_members?.length || 0} members
+                          {project.teams?.[0]?.team_members?.length || 0} people
                           </p>
                         </div>
                         <div className="rounded-md bg-secondary/50 p-3 sm:col-span-2">
                           <p className="text-xs text-muted-foreground">Next step</p>
                           <p className="mt-1 text-sm text-foreground">
                             {project.teams?.[0]?.team_members?.length > 0
-                              ? "Open the workspace and align on the first-week plan."
-                              : "Review applications or share this project to find the first teammate."}
+                              ? "Open the chat and decide the first concrete step."
+                              : "Review interest or share this intent with someone who might be down."}
                           </p>
                         </div>
                       </div>
@@ -547,9 +547,9 @@ export default function TeamsPage() {
               ) : (
                 <div className="rounded-lg border border-dashed border-border p-10 text-center">
                   <FolderOpen className="mx-auto h-10 w-10 text-muted-foreground" />
-                  <h3 className="mt-3 font-semibold text-foreground">No projects yet</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Create your first project and start building a team.</p>
-                  <Button asChild className="mt-4"><Link href="/create">Create Project</Link></Button>
+                  <h3 className="mt-3 font-semibold text-foreground">No intents yet</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">Post something you want to do with someone else.</p>
+                  <Button asChild className="mt-4"><Link href="/create">New Intent</Link></Button>
                 </div>
               )
             )}
@@ -571,13 +571,13 @@ export default function TeamsPage() {
                             <Link href={`/project/${membership.team?.project?.id}`} className="font-semibold text-foreground hover:text-primary">
                               {membership.team?.project?.title}
                             </Link>
-                            <p className="text-sm text-muted-foreground">Your role: {membership.role}</p>
+                            <p className="text-sm text-muted-foreground">{membership.role}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary">{membership.team?.project?.status}</Badge>
                           {membership.team?.id && (
-                            <Button asChild size="sm"><Link href={`/team/${membership.team.id}`}>Open Workspace</Link></Button>
+                            <Button asChild size="sm"><Link href={`/team/${membership.team.id}`}>Open Chat</Link></Button>
                           )}
                         </div>
                       </div>
@@ -587,9 +587,9 @@ export default function TeamsPage() {
               ) : (
                 <div className="rounded-lg border border-dashed border-border p-10 text-center">
                   <Users className="mx-auto h-10 w-10 text-muted-foreground" />
-                  <h3 className="mt-3 font-semibold text-foreground">Not in any teams yet</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Find projects that match your skills and apply to join.</p>
-                  <Button asChild className="mt-4"><Link href="/explore">Explore Projects</Link></Button>
+                  <h3 className="mt-3 font-semibold text-foreground">Nothing started yet</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">Browse intents and say you are interested.</p>
+                  <Button asChild className="mt-4"><Link href="/explore">Browse Intents</Link></Button>
                 </div>
               )
             )}
@@ -610,7 +610,7 @@ export default function TeamsPage() {
                           <div>
                             <p className="font-semibold text-foreground">{application.user?.full_name || "Anonymous"}</p>
                             <p className="text-sm text-muted-foreground">
-                              Applied for <span className="font-medium">{application.role_applied}</span> in <span className="font-medium">{application.project?.title}</span>
+                              Is interested in <span className="font-medium">{application.project?.title}</span>
                             </p>
                             <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                               <Clock className="h-3 w-3" />
@@ -634,8 +634,8 @@ export default function TeamsPage() {
               ) : (
                 <div className="rounded-lg border border-dashed border-border p-10 text-center">
                   <Mail className="mx-auto h-10 w-10 text-muted-foreground" />
-                  <h3 className="mt-3 font-semibold text-foreground">No pending applications</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">When people apply to your projects, they will appear here.</p>
+                  <h3 className="mt-3 font-semibold text-foreground">No new interest</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">When people respond to your intents, they will appear here.</p>
                 </div>
               )
             )}
@@ -646,9 +646,9 @@ export default function TeamsPage() {
         <Dialog open={!!selectedApplication} onOpenChange={() => setSelectedApplication(null)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Application Details</DialogTitle>
+              <DialogTitle>Interest Details</DialogTitle>
               <DialogDescription>
-                Review this application for {selectedApplication?.project?.title}
+                Review this response for {selectedApplication?.project?.title}
               </DialogDescription>
             </DialogHeader>
             {selectedApplication && (

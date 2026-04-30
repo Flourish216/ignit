@@ -4,7 +4,7 @@ import { Navigation } from "@/components/navigation"
 import { IdeaInput } from "@/components/idea-input"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { ArrowRight, CheckCircle2, Compass, Lightbulb, MessageSquare, Sparkles } from "lucide-react"
+import { ArrowRight, Compass, Lightbulb, MessageSquare } from "lucide-react"
 import { useLanguage } from "@/lib/i18n/context"
 
 export default function HomePage() {
@@ -15,36 +15,26 @@ export default function HomePage() {
     <div className="min-h-screen bg-background lg:pl-64">
       <Navigation />
       <main>
-        <section className="px-4 pb-14 pt-10 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-5xl">
-            <div className="mx-auto max-w-3xl text-center">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="text-muted-foreground">{t.hero.badge}</span>
-              </div>
-              <h1 className="text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+        <section className="px-4 pb-12 pt-12 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-4xl">
+            <div className="mx-auto max-w-2xl text-center">
+              <h1 className="text-balance text-5xl font-semibold tracking-tight text-foreground sm:text-6xl">
                 {t.mainline.title}
               </h1>
-              <p className="mx-auto mt-5 max-w-2xl text-pretty text-base text-muted-foreground sm:text-lg">
+              <p className="mx-auto mt-5 max-w-xl text-pretty text-base text-muted-foreground sm:text-lg">
                 {t.mainline.subtitle}
               </p>
             </div>
 
-            <div className="mt-9 flex justify-center">
+            <div className="mt-10 flex justify-center">
               <IdeaInput />
             </div>
 
-            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Button asChild variant="outline" className="gap-2">
                 <Link href="/explore">
                   {t.cta.exploreProjects}
                   <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-              <Button asChild variant="ghost" className="gap-2">
-                <Link href="/profile">
-                  <CheckCircle2 className="h-4 w-4" />
-                  {t.nav.profile}
                 </Link>
               </Button>
             </div>
@@ -73,7 +63,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="px-4 py-12 sm:px-6 lg:px-8">
+        <section className="px-4 py-10 sm:px-6 lg:px-8">
           <div className="mx-auto flex max-w-5xl flex-col gap-4 rounded-lg border border-border bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-foreground">{t.cta.title}</h2>
