@@ -70,14 +70,23 @@ const floatingPositions = [
   "right-3 bottom-4 md:right-12 md:bottom-8",
 ]
 
+const goalsPrefix = "profile:goals:"
+const availabilityPrefix = "profile:availability:"
+
+function readStoredValue(value: unknown, prefix: string) {
+  if (!Array.isArray(value)) return ""
+  const item = value.find((entry) => typeof entry === "string" && entry.startsWith(prefix))
+  return typeof item === "string" ? item.slice(prefix.length) : ""
+}
+
 function normalizeProfile(profile: any): ProfileDraft {
   return {
-    full_name: profile?.full_name || profile?.display_name || "",
+    full_name: profile?.full_name || "",
     bio: profile?.bio || "",
     location: profile?.location || "",
     website: profile?.website || "",
-    current_goals: profile?.current_goals || "",
-    availability: profile?.availability || "",
+    current_goals: profile?.current_goals || readStoredValue(profile?.interests, goalsPrefix),
+    availability: profile?.availability || readStoredValue(profile?.skills, availabilityPrefix),
   }
 }
 
@@ -177,13 +186,25 @@ export default function ProfilePage() {
           bio: editForm.bio,
           location: editForm.location,
           website: editForm.website,
-          current_goals: editForm.current_goals,
-          availability: editForm.availability,
+          interests: editForm.current_goals ? [`${goalsPrefix}${editForm.current_goals}`] : [],
+          skills: editForm.availability ? [`${availabilityPrefix}${editForm.availability}`] : [],
           updated_at: new Date().toISOString(),
         })
         .eq("id", user.id)
 
       if (error) throw error
+
+      const { error: optionalFieldError } = await supabase
+        .from("profiles")
+        .update({
+          current_goals: editForm.current_goals,
+          availability: editForm.availability,
+        })
+        .eq("id", user.id)
+
+      if (optionalFieldError && optionalFieldError.code !== "42703") {
+        throw optionalFieldError
+      }
 
       mutate(`profile-${user.id}`)
       setIsEditing(false)
