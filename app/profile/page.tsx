@@ -5,16 +5,12 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import useSWR, { mutate } from "swr"
 import {
-  Compass,
   Gamepad2,
   Loader2,
-  Music,
   Pencil,
-  Rocket,
   Save,
   Sparkles,
   X,
-  Zap,
 } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { PixelCompanion } from "@/components/pixel-companion"
@@ -43,14 +39,6 @@ const blankProfile: ProfileDraft = {
   current_goals: "",
   availability: "",
 }
-
-const sparkCategories = [
-  { name: "Build", description: "Products, tools, clubs, or small ventures.", icon: Rocket },
-  { name: "Learn", description: "Study, practice, or figure something out together.", icon: Sparkles },
-  { name: "Move", description: "Gym, sports, walks, runs, and active routines.", icon: Zap },
-  { name: "Go", description: "Concerts, city plans, campus events, short trips.", icon: Compass },
-  { name: "Create", description: "Music, video, design, writing, games, and art.", icon: Music },
-]
 
 const fallbackLines = [
   "wants to start something real",
@@ -470,37 +458,7 @@ export default function ProfilePage() {
           </Card>
         </section>
 
-        <section className="mt-6 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
-          <Card>
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">Spark Categories</h2>
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Sparks are what people want to start together. Categories guide browsing, not identity.
-              </p>
-
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                {sparkCategories.map((category) => {
-                  const Icon = category.icon
-                  return (
-                    <div key={category.name} className="rounded-lg border border-border bg-background p-4">
-                      <div className="flex items-center gap-2">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary/10">
-                          <Icon className="h-4 w-4 text-primary" />
-                        </div>
-                        <h3 className="font-semibold text-foreground">{category.name}</h3>
-                      </div>
-                      <p className="mt-3 text-sm text-muted-foreground">{category.description}</p>
-                    </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          <section className="rounded-lg border border-border bg-card p-5">
+        <section className="mt-6 rounded-lg border border-border bg-card p-5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-foreground">My Sparks</h2>
@@ -532,7 +490,6 @@ export default function ProfilePage() {
                 </Button>
               </div>
             )}
-          </section>
         </section>
       </main>
     </div>
