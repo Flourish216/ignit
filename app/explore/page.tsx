@@ -6,7 +6,7 @@ import Link from "next/link"
 import useSWR from "swr"
 import { Filter, Loader2, Plus, Search, Sparkles } from "lucide-react"
 import { Navigation } from "@/components/navigation"
-import { IntentCard } from "@/components/intent-card"
+import { SparkCard } from "@/components/spark-card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,7 +18,7 @@ const statusFilters = [
   { value: "in_progress", label: "Matched" },
 ]
 
-const categories = ["Social", "Study", "Fitness", "Gaming", "Explore", "Creative", "Side Project"]
+const categories = ["Build", "Learn", "Move", "Go", "Create"]
 
 function ExploreContent() {
   const searchParams = useSearchParams()
@@ -94,15 +94,15 @@ function ExploreContent() {
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Browse intents</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Browse Sparks</h1>
             <p className="mt-1 text-muted-foreground">
-              Find something you want to do with someone else.
+              Find something meaningful to start with someone else.
             </p>
           </div>
           <Button asChild>
             <Link href="/create">
               <Plus className="mr-2 h-4 w-4" />
-              New Intent
+              New Spark
             </Link>
           </Button>
         </div>
@@ -112,7 +112,7 @@ function ExploreContent() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search intents..."
+                placeholder="Search Sparks..."
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 className="pl-10"
@@ -171,7 +171,7 @@ function ExploreContent() {
           ) : filteredIntents && filteredIntents.length > 0 ? (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {filteredIntents.map((intent) => (
-                <IntentCard key={intent.id} intent={intent as any} />
+                <SparkCard key={intent.id} spark={intent as any} />
               ))}
             </div>
           ) : (
@@ -179,16 +179,16 @@ function ExploreContent() {
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary">
                 <Sparkles className="h-7 w-7 text-muted-foreground" />
               </div>
-              <h3 className="mt-4 text-lg font-semibold text-foreground">No intents found</h3>
+              <h3 className="mt-4 text-lg font-semibold text-foreground">No Sparks found</h3>
               <p className="mt-2 text-muted-foreground">
                 {searchQuery || selectedCategories.length > 0
                   ? "Try a different search or category."
-                  : "Post the first intent."}
+                  : "Post the first Spark."}
               </p>
               <Button asChild className="mt-6">
                 <Link href="/create">
                   <Plus className="mr-2 h-4 w-4" />
-                  New Intent
+                  New Spark
                 </Link>
               </Button>
             </div>

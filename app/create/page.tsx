@@ -93,7 +93,7 @@ function CreateIntentContent() {
 
       if (!response.ok) {
         const errorText = await response.text()
-        throw new Error(errorText || "Failed to structure intent")
+        throw new Error(errorText || "Failed to structure Spark")
       }
 
       const data = await response.json()
@@ -141,7 +141,7 @@ function CreateIntentContent() {
       if (error) throw error
       router.push(`/project/${data.id}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to publish intent")
+      setError(err instanceof Error ? err.message : "Failed to publish Spark")
     } finally {
       setIsPublishing(false)
     }

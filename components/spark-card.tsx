@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ArrowRight, Calendar, MapPin, UserRound } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 
-type IntentBreakdown = {
+type SparkBreakdown = {
   title?: string
   category?: string
   description?: string
@@ -19,14 +19,14 @@ type IntentBreakdown = {
   status?: string
 }
 
-interface IntentCardProps {
-  intent: {
+interface SparkCardProps {
+  spark: {
     id: string
     title: string
     description: string | null
     status: string
     created_at: string
-    ai_breakdown?: IntentBreakdown | null
+    ai_breakdown?: SparkBreakdown | null
     owner: {
       id: string
       full_name: string | null
@@ -35,21 +35,21 @@ interface IntentCardProps {
   }
 }
 
-const getStatusLabel = (status: string, intentStatus?: string) => {
-  if (intentStatus) return intentStatus
+const getStatusLabel = (status: string, sparkStatus?: string) => {
+  if (sparkStatus) return sparkStatus
   if (status === "recruiting") return "open"
   if (status === "in_progress") return "matched"
   return status
 }
 
-export function IntentCard({ intent }: IntentCardProps) {
-  const details = intent.ai_breakdown || {}
-  const title = details.title || intent.title
-  const description = details.description || intent.description || "No description yet."
-  const status = getStatusLabel(intent.status, details.status)
+export function SparkCard({ spark }: SparkCardProps) {
+  const details = spark.ai_breakdown || {}
+  const title = details.title || spark.title
+  const description = details.description || spark.description || "No description yet."
+  const status = getStatusLabel(spark.status, details.status)
 
   return (
-    <Link href={`/project/${intent.id}`}>
+    <Link href={`/project/${spark.id}`}>
       <Card className="group h-full border-border/80 bg-card transition-colors hover:border-primary/50">
         <CardContent className="flex h-full flex-col p-4">
           <div className="flex items-start justify-between gap-3">
@@ -93,23 +93,23 @@ export function IntentCard({ intent }: IntentCardProps) {
           )}
 
           <div className="mt-auto flex items-center justify-between gap-3 pt-5">
-            {intent.owner ? (
+            {spark.owner ? (
               <div className="flex min-w-0 items-center gap-2">
                 <Avatar className="h-6 w-6">
-                  <AvatarImage src={intent.owner.avatar_url || ""} />
+                  <AvatarImage src={spark.owner.avatar_url || ""} />
                   <AvatarFallback className="bg-primary/10 text-xs text-primary">
-                    {intent.owner.full_name?.[0]?.toUpperCase() || "U"}
+                    {spark.owner.full_name?.[0]?.toUpperCase() || "U"}
                   </AvatarFallback>
                 </Avatar>
                 <span className="truncate text-xs text-muted-foreground">
-                  {intent.owner.full_name || "Anonymous"}
+                  {spark.owner.full_name || "Anonymous"}
                 </span>
               </div>
             ) : (
               <span />
             )}
             <span className="shrink-0 text-xs text-muted-foreground">
-              {formatDistanceToNow(new Date(intent.created_at), { addSuffix: true })}
+              {formatDistanceToNow(new Date(spark.created_at), { addSuffix: true })}
             </span>
           </div>
         </CardContent>

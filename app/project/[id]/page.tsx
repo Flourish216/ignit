@@ -49,7 +49,7 @@ const getStatusLabel = (status: string, intentStatus?: string) => {
   return status
 }
 
-export default function IntentDetailPage() {
+export default function SparkDetailPage() {
   const params = useParams()
   const router = useRouter()
   const id = params?.id as string | null
@@ -160,9 +160,9 @@ export default function IntentDetailPage() {
       <div className="min-h-screen bg-background lg:pl-64">
         <Navigation />
         <main className="mx-auto max-w-3xl px-4 py-16 text-center">
-          <h1 className="text-2xl font-semibold">Intent not found</h1>
+          <h1 className="text-2xl font-semibold">Spark not found</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {error ? error.message : "This intent may have been removed."}
+            {error ? error.message : "This Spark may have been removed."}
           </p>
           <Button asChild className="mt-5">
             <Link href="/explore">Back to Browse</Link>
@@ -213,7 +213,7 @@ export default function IntentDetailPage() {
                     </Avatar>
                     <div>
                       <p className="text-sm font-medium">{owner?.full_name || "Anonymous"}</p>
-                      <p className="text-xs text-muted-foreground">Posted this intent</p>
+                      <p className="text-xs text-muted-foreground">Posted this Spark</p>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">

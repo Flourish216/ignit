@@ -434,9 +434,9 @@ export default function TeamsPage() {
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">My Intents</h1>
+          <h1 className="text-3xl font-bold text-foreground">My Sparks</h1>
           <p className="mt-1 text-muted-foreground">
-            Review interest, see what you posted, and open chats when something starts.
+            Review interest, see what you posted, and open chats when a Spark becomes a Match.
           </p>
         </div>
 
@@ -453,7 +453,7 @@ export default function TeamsPage() {
                     {pendingApplications.length} new interest{pendingApplications.length > 1 ? "s" : ""}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    People responded to your intents.
+                    People responded to your Sparks.
                   </p>
                 </div>
               </div>
@@ -467,8 +467,8 @@ export default function TeamsPage() {
         <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
           <aside className="rounded-lg border border-border bg-card p-2 lg:sticky lg:top-24 lg:self-start">
             {[
-              { id: "owned", label: "Posted Intents", detail: "Things you started", icon: FolderOpen, count: myProjects?.length || 0 },
-              { id: "member", label: "Started Together", detail: "Accepted intents", icon: Users, count: myMemberships?.length || 0 },
+              { id: "owned", label: "Posted Sparks", detail: "Things you started", icon: FolderOpen, count: myProjects?.length || 0 },
+              { id: "member", label: "Matches", detail: "Accepted Sparks", icon: Users, count: myMemberships?.length || 0 },
               { id: "applications", label: "Interest", detail: "People who responded", icon: Mail, count: pendingApplications?.length || 0 },
             ].map((item) => {
               const Icon = item.icon
@@ -537,7 +537,7 @@ export default function TeamsPage() {
                           <p className="mt-1 text-sm text-foreground">
                             {project.teams?.[0]?.team_members?.length > 0
                               ? "Open the chat and decide the first concrete step."
-                              : "Review interest or share this intent with someone who might be down."}
+                              : "Review interest or share this Spark with someone who might be down."}
                           </p>
                         </div>
                       </div>
@@ -547,9 +547,9 @@ export default function TeamsPage() {
               ) : (
                 <div className="rounded-lg border border-dashed border-border p-10 text-center">
                   <FolderOpen className="mx-auto h-10 w-10 text-muted-foreground" />
-                  <h3 className="mt-3 font-semibold text-foreground">No intents yet</h3>
+                  <h3 className="mt-3 font-semibold text-foreground">No Sparks yet</h3>
                   <p className="mt-1 text-sm text-muted-foreground">Post something you want to do with someone else.</p>
-                  <Button asChild className="mt-4"><Link href="/create">New Intent</Link></Button>
+                  <Button asChild className="mt-4"><Link href="/create">New Spark</Link></Button>
                 </div>
               )
             )}
@@ -588,8 +588,8 @@ export default function TeamsPage() {
                 <div className="rounded-lg border border-dashed border-border p-10 text-center">
                   <Users className="mx-auto h-10 w-10 text-muted-foreground" />
                   <h3 className="mt-3 font-semibold text-foreground">Nothing started yet</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Browse intents and say you are interested.</p>
-                  <Button asChild className="mt-4"><Link href="/explore">Browse Intents</Link></Button>
+                  <p className="mt-1 text-sm text-muted-foreground">Browse Sparks and say you are interested.</p>
+                  <Button asChild className="mt-4"><Link href="/explore">Browse Sparks</Link></Button>
                 </div>
               )
             )}
@@ -635,7 +635,7 @@ export default function TeamsPage() {
                 <div className="rounded-lg border border-dashed border-border p-10 text-center">
                   <Mail className="mx-auto h-10 w-10 text-muted-foreground" />
                   <h3 className="mt-3 font-semibold text-foreground">No new interest</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">When people respond to your intents, they will appear here.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">When people respond to your Sparks, they will appear here.</p>
                 </div>
               )
             )}
