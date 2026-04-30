@@ -1,6 +1,9 @@
 -- Team Workspace: Channels & Messages
 -- 类似 Discord/Slack 的团队交流空间
 
+-- 0. 先补上 teams 表缺少的 created_by 列（旧建表脚本没有这列）
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id);
+
 -- 1. 创建频道表
 CREATE TABLE IF NOT EXISTS channels (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,

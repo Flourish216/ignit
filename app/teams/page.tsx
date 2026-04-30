@@ -412,7 +412,8 @@ export default function TeamsPage() {
             .from("teams")
             .insert({ 
               project_id: application.project_id, 
-              name: `${application.project?.title} Team` 
+              name: `${application.project?.title} Team`,
+              created_by: user.id,
             })
             .select()
             .single()
