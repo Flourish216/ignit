@@ -2,7 +2,7 @@ export type Language = 'en' | 'zh'
 
 export const translations = {
   en: {
-    nav: { home: 'Home', explore: 'Browse', teams: 'My Intents', newProject: 'New Intent', signIn: 'Sign In', getStarted: 'Get Started', profile: 'Profile', myTeams: 'My Intents', messages: 'Messages', searchProjects: 'Search intents...', signOut: 'Sign Out' },
+    nav: { home: 'Home', explore: 'Browse', teams: 'My Sparks', newProject: 'New Spark', signIn: 'Sign In', getStarted: 'Get Started', profile: 'Companion', myTeams: 'My Sparks', messages: 'Messages', searchProjects: 'Search Sparks...', signOut: 'Sign Out' },
     hero: { badge: 'Find a buddy to start with', title: 'Don’t start alone.', titleHighlight: '', description: 'Tell Ignit what you want to do. Find someone who wants to do it too.' },
     features: { title: 'How it works', subtitle: 'From a rough intent to a real start', shareIdea: { title: 'Say the thing', description: 'Write what you want to do in plain language.' }, aiBreakdown: { title: 'Make it clear', description: 'Ignit turns it into a simple card.' }, findTeam: { title: 'Find someone', description: 'People can browse and respond.' }, buildTogether: { title: 'Start small', description: 'Chat and decide the first step.' } },
     cta: { title: 'Have something in mind?', subtitle: 'Post it as an intent and see who is interested.', exploreProjects: 'Browse Intents', createAccount: 'Create Account' },
@@ -77,7 +77,7 @@ export const translations = {
     language: 'Language',
   },
   zh: {
-    nav: { home: '首页', explore: '浏览', teams: '我的 Intent', newProject: '新建 Intent', signIn: '登录', getStarted: '开始使用', profile: '个人资料', myTeams: '我的 Intent', messages: '消息', searchProjects: '搜索 Intent...', signOut: '退出登录' },
+    nav: { home: '首页', explore: '浏览', teams: '我的 Spark', newProject: '新建 Spark', signIn: '登录', getStarted: '开始使用', profile: 'Companion', myTeams: '我的 Spark', messages: '消息', searchProjects: '搜索 Spark...', signOut: '退出登录' },
     hero: { badge: '找一个一起开始的人', title: 'Don’t start alone.', titleHighlight: '', description: 'Tell Ignit what you want to do. Find someone who wants to do it too.' },
     features: { title: '工作原理', subtitle: '从一句 Intent 到真的开始', shareIdea: { title: '说出想做的事', description: '用简单的话写下来。' }, aiBreakdown: { title: '整理清楚', description: 'Ignit 把它变成一张简单卡片。' }, findTeam: { title: '找到一个人', description: '别人可以浏览并回应。' }, buildTogether: { title: '小步开始', description: '聊一下，然后确定第一步。' } },
     cta: { title: '已经有想做的事了吗？', subtitle: '把它发布成 Intent，看看谁也感兴趣。', exploreProjects: '浏览 Intent', createAccount: '创建账户' },
