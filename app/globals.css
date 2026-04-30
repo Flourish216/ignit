@@ -123,3 +123,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+@keyframes igni-drift-right {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(var(--igni-travel, 32px), -5px, 0);
+  }
+}

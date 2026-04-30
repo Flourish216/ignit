@@ -50,12 +50,12 @@ const fallbackLines = [
 ]
 
 const floatingPositions = [
-  "left-3 top-4 md:left-4 md:top-8",
-  "right-3 top-20 md:right-2 md:top-10",
-  "left-3 top-36 md:left-0 md:top-36",
-  "right-3 bottom-28 md:right-0 md:top-36",
-  "left-3 bottom-14 md:left-16 md:bottom-6",
-  "right-3 bottom-4 md:right-12 md:bottom-8",
+  "left-[5%] top-[7%] [--igni-travel:34px] [animation-delay:-0.5s]",
+  "left-[48%] top-[18%] [--igni-travel:26px] [animation-delay:-2.1s]",
+  "left-[7%] top-[36%] [--igni-travel:42px] [animation-delay:-3.4s]",
+  "left-[56%] top-[43%] [--igni-travel:24px] [animation-delay:-1.3s]",
+  "left-[12%] bottom-[17%] [--igni-travel:30px] [animation-delay:-4.5s]",
+  "left-[53%] bottom-[8%] [--igni-travel:36px] [animation-delay:-2.9s]",
 ]
 
 const goalsPrefix = "profile:goals:"
@@ -444,13 +444,18 @@ export default function ProfilePage() {
                 {companionLines.map((line, index) => (
                   <div
                     key={`${line}-${index}`}
-                    className={`absolute z-20 max-w-[150px] border-2 bg-background px-3 py-2 text-xs font-medium sm:max-w-[190px] ${floatingPositions[index]} ${
+                    className={`absolute z-20 inline-flex w-fit max-w-[min(220px,calc(100%-2rem))] items-center rounded-2xl border bg-background/90 px-3.5 py-2 text-xs font-medium leading-snug backdrop-blur [animation:igni-drift-right_7.5s_ease-in-out_infinite] sm:max-w-[230px] ${floatingPositions[index]} ${
                       hasCompanionContext
-                        ? "border-foreground text-foreground shadow-[4px_4px_0_var(--foreground)]"
-                        : "border-dashed border-muted-foreground/40 text-muted-foreground/60 shadow-[4px_4px_0_hsl(var(--muted))]"
+                        ? "border-primary/30 text-foreground shadow-[0_10px_28px_hsl(var(--primary)/0.16)] ring-1 ring-primary/10"
+                        : "border-dashed border-muted-foreground/30 text-muted-foreground/60 shadow-[0_10px_24px_hsl(var(--muted)/0.9)]"
                     }`}
                   >
-                    {line}
+                    <span
+                      className={`absolute -bottom-1 left-6 h-2.5 w-2.5 rotate-45 border-b border-r bg-background ${
+                        hasCompanionContext ? "border-primary/30" : "border-muted-foreground/30"
+                      }`}
+                    />
+                    <span className="relative z-10 whitespace-normal">{line}</span>
                   </div>
                 ))}
               </div>
