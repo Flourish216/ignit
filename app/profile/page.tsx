@@ -169,6 +169,15 @@ export default function ProfilePage() {
     return generatedLines.length > 0 ? generatedLines.slice(0, 6) : makeLocalLines(displayProfile, sparks)
   }, [displayProfile, generatedLines, sparks])
 
+  const hasCompanionContext = Boolean(
+    generatedLines.length > 0 ||
+    displayProfile.bio ||
+    displayProfile.current_goals ||
+    displayProfile.availability ||
+    displayProfile.location ||
+    (sparks && sparks.length > 0)
+  )
+
   const startEditing = () => {
     setEditForm(normalizeProfile(profile))
     setSaveError("")
@@ -335,7 +344,11 @@ export default function ProfilePage() {
                     />
                   ) : (
                     <>
-                      <h2 className="truncate text-xl font-semibold text-foreground">
+                      <h2
+                        className={`truncate text-xl font-semibold ${
+                          displayProfile.full_name ? "text-foreground" : "text-muted-foreground/60"
+                        }`}
+                      >
                         {displayProfile.full_name || "Unnamed starter"}
                       </h2>
                       <p className="mt-1 truncate text-sm text-muted-foreground">{user.email}</p>
@@ -348,31 +361,35 @@ export default function ProfilePage() {
                 <EditableTextArea
                   label="About me"
                   value={editForm.bio}
-                  displayValue={displayProfile.bio || "Write a short paragraph about how you think, what you like doing, and what kind of energy you bring."}
+                  displayValue={displayProfile.bio}
                   editing={isEditing}
-                  placeholder="I like starting small things with people. I care about music, design, and getting ideas out fast..."
+                  placeholder="Example: I like starting small things with people. I care about music, design, and getting ideas out fast..."
+                  emptyText="Example: I like starting small things with people. I care about music, design, and getting ideas out fast..."
                   onChange={(value) => setEditForm({ ...editForm, bio: value })}
                 />
                 <EditableTextArea
                   label="What I want to start"
                   value={editForm.current_goals}
-                  displayValue={displayProfile.current_goals || "Describe the things you want to start with others."}
+                  displayValue={displayProfile.current_goals}
                   editing={isEditing}
-                  placeholder="I want to find people to build small tools, go to live shows, and start a campus creative group..."
+                  placeholder="Example: I want to find people to build small tools, go to live shows, and start a campus creative group..."
+                  emptyText="Example: I want to find people to build small tools, go to live shows, and start a campus creative group..."
                   onChange={(value) => setEditForm({ ...editForm, current_goals: value })}
                 />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <EditableField
                     label="Location"
                     value={editForm.location}
-                    displayValue={displayProfile.location || "Flexible"}
+                    displayValue={displayProfile.location}
+                    emptyText="Example: NYC, campus, online"
                     editing={isEditing}
                     onChange={(value) => setEditForm({ ...editForm, location: value })}
                   />
                   <EditableField
                     label="Website"
                     value={editForm.website}
-                    displayValue={displayProfile.website || "Not added"}
+                    displayValue={displayProfile.website}
+                    emptyText="Example: portfolio, project page, link"
                     editing={isEditing}
                     onChange={(value) => setEditForm({ ...editForm, website: value })}
                   />
@@ -393,8 +410,12 @@ export default function ProfilePage() {
                       <option value="exploring">Just exploring</option>
                     </select>
                   ) : (
-                    <p className="mt-1 text-sm font-medium capitalize text-foreground">
-                      {displayProfile.availability ? displayProfile.availability.replace(/-/g, " ") : "Flexible"}
+                    <p
+                      className={`mt-1 text-sm font-medium capitalize ${
+                        displayProfile.availability ? "text-foreground" : "italic text-muted-foreground/60"
+                      }`}
+                    >
+                      {displayProfile.availability ? displayProfile.availability.replace(/-/g, " ") : "Example: weekends"}
                     </p>
                   )}
                 </div>
@@ -435,7 +456,11 @@ export default function ProfilePage() {
                 {companionLines.map((line, index) => (
                   <div
                     key={`${line}-${index}`}
-                    className={`absolute z-20 max-w-[150px] border-2 border-foreground bg-background px-3 py-2 text-xs font-medium shadow-[4px_4px_0_var(--foreground)] sm:max-w-[190px] ${floatingPositions[index]}`}
+                    className={`absolute z-20 max-w-[150px] border-2 bg-background px-3 py-2 text-xs font-medium sm:max-w-[190px] ${floatingPositions[index]} ${
+                      hasCompanionContext
+                        ? "border-foreground text-foreground shadow-[4px_4px_0_var(--foreground)]"
+                        : "border-dashed border-muted-foreground/40 text-muted-foreground/60 shadow-[4px_4px_0_hsl(var(--muted))]"
+                    }`}
                   >
                     {line}
                   </div>
@@ -518,22 +543,28 @@ function EditableField({
   label,
   value,
   displayValue,
+  emptyText,
   editing,
   onChange,
 }: {
   label: string
   value: string
   displayValue: string
+  emptyText: string
   editing: boolean
   onChange: (value: string) => void
 }) {
+  const hasValue = Boolean(displayValue)
+
   return (
     <div className="rounded-lg border border-border bg-secondary/35 p-3">
       <p className="text-xs font-medium uppercase text-muted-foreground">{label}</p>
       {editing ? (
         <Input value={value} onChange={(event) => onChange(event.target.value)} className="mt-2" />
       ) : (
-        <p className="mt-1 text-sm font-medium text-foreground">{displayValue}</p>
+        <p className={`mt-1 text-sm font-medium ${hasValue ? "text-foreground" : "italic text-muted-foreground/60"}`}>
+          {hasValue ? displayValue : emptyText}
+        </p>
       )}
     </div>
   )
@@ -545,6 +576,7 @@ function EditableTextArea({
   displayValue,
   editing,
   placeholder,
+  emptyText,
   onChange,
 }: {
   label: string
@@ -552,8 +584,11 @@ function EditableTextArea({
   displayValue: string
   editing: boolean
   placeholder: string
+  emptyText: string
   onChange: (value: string) => void
 }) {
+  const hasValue = Boolean(displayValue)
+
   return (
     <div className="rounded-lg border border-border bg-secondary/35 p-3">
       <p className="text-xs font-medium uppercase text-muted-foreground">{label}</p>
@@ -565,7 +600,13 @@ function EditableTextArea({
           className="mt-2 min-h-[120px]"
         />
       ) : (
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">{displayValue}</p>
+        <p
+          className={`mt-2 whitespace-pre-wrap text-sm leading-6 ${
+            hasValue ? "text-foreground" : "italic text-muted-foreground/60"
+          }`}
+        >
+          {hasValue ? displayValue : emptyText}
+        </p>
       )}
     </div>
   )
