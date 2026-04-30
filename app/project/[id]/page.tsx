@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { formatDistanceToNow } from "date-fns"
 import useSWR, { mutate } from "swr"
-import { ArrowLeft, Calendar, Loader2, MapPin, MessageCircle, Send, UserRound } from "lucide-react"
+import { ArrowLeft, Calendar, Loader2, MapPin, MessageCircle, Send, Trash2, UserRound } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -56,6 +56,7 @@ export default function SparkDetailPage() {
   const supabase = createClient()
   const [message, setMessage] = useState("")
   const [isSendingInterest, setIsSendingInterest] = useState(false)
+  const [isDeletingSpark, setIsDeletingSpark] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -141,6 +142,30 @@ export default function SparkDetailPage() {
       setErrorMessage(error instanceof Error ? error.message : "Could not send interest")
     } finally {
       setIsSendingInterest(false)
+    }
+  }
+
+  const handleDeleteSpark = async () => {
+    if (!user || !id || !isOwner) return
+    if (!window.confirm("Delete this Spark? This cannot be undone.")) return
+
+    setIsDeletingSpark(true)
+    setErrorMessage(null)
+
+    try {
+      const { error } = await supabase
+        .from("projects")
+        .delete()
+        .eq("id", id)
+        .eq("owner_id", user.id)
+
+      if (error) throw error
+
+      router.push("/profile")
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Could not delete Spark")
+    } finally {
+      setIsDeletingSpark(false)
     }
   }
 
@@ -260,6 +285,20 @@ export default function SparkDetailPage() {
                     <Button asChild className="w-full" variant="outline">
                       <Link href="/teams">Review interests</Link>
                     </Button>
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      onClick={handleDeleteSpark}
+                      disabled={isDeletingSpark}
+                    >
+                      {isDeletingSpark ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="mr-2 h-4 w-4" />
+                      )}
+                      Delete Spark
+                    </Button>
+                    {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
                   </div>
                 ) : existingInterest ? (
                   <div className="rounded-lg bg-secondary p-3 text-center">

@@ -10,6 +10,7 @@ import {
   Pencil,
   Save,
   Sparkles,
+  Trash2,
   X,
 } from "lucide-react"
 import { Navigation } from "@/components/navigation"
@@ -115,6 +116,7 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [deletingSparkId, setDeletingSparkId] = useState<string | null>(null)
   const [saveError, setSaveError] = useState("")
   const [generatedLines, setGeneratedLines] = useState<string[]>([])
   const [editForm, setEditForm] = useState<ProfileDraft>(blankProfile)
@@ -176,6 +178,39 @@ export default function ProfilePage() {
     setEditForm(blankProfile)
     setSaveError("")
     setIsEditing(false)
+  }
+
+  const handleDeleteSpark = async (sparkId: string) => {
+    if (!user) return
+    if (!window.confirm("Delete this Spark? This cannot be undone.")) return
+
+    setDeletingSparkId(sparkId)
+    setSaveError("")
+
+    try {
+      const { error } = await supabase
+        .from("projects")
+        .delete()
+        .eq("id", sparkId)
+        .eq("owner_id", user.id)
+
+      if (error) throw error
+
+      mutate(
+        `profile-sparks-${user.id}`,
+        (current: any[] | undefined) => current?.filter((spark) => spark.id !== sparkId) || [],
+        { revalidate: false }
+      )
+    } catch (error) {
+      console.error("Error deleting Spark:", error)
+      const message =
+        error && typeof error === "object" && "message" in error
+          ? String(error.message)
+          : "Unknown Supabase error"
+      setSaveError(`Could not delete Spark: ${message}`)
+    } finally {
+      setDeletingSparkId(null)
+    }
   }
 
   const handleSave = async () => {
@@ -479,8 +514,27 @@ export default function ProfilePage() {
                 {sparks.map((spark: any) => (
                   <Card key={spark.id} className="border-border/80">
                     <CardContent className="p-4">
-                      <Badge variant="secondary">{spark.ai_breakdown?.category || "Build"}</Badge>
-                      <h3 className="mt-3 line-clamp-2 font-semibold text-foreground">{spark.title}</h3>
+                      <div className="flex items-start justify-between gap-3">
+                        <Badge variant="secondary">{spark.ai_breakdown?.category || "Build"}</Badge>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDeleteSpark(spark.id)}
+                          disabled={deletingSparkId === spark.id}
+                          aria-label="Delete Spark"
+                        >
+                          {deletingSparkId === spark.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                      <Link href={`/project/${spark.id}`} className="mt-3 block">
+                        <h3 className="line-clamp-2 font-semibold text-foreground hover:text-primary">{spark.title}</h3>
+                      </Link>
                       <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{spark.description}</p>
                     </CardContent>
                   </Card>
