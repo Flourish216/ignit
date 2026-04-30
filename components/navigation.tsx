@@ -1,12 +1,16 @@
 "use client"
 
+import type { FormEvent } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Compass, Home, LogOut, Plus, Sparkles, User, Users } from "lucide-react"
+import { Compass, Home, LogOut, Mail, Plus, Search, Sparkles, User, Users } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
@@ -18,6 +22,7 @@ export function Navigation() {
   const router = useRouter()
   const supabase = createClient()
   const { t } = useLanguage()
+  const [searchQuery, setSearchQuery] = useState("")
 
   const navItems = [
     { href: "/", label: t.nav.home, icon: Home },
@@ -48,6 +53,12 @@ export function Navigation() {
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/"
     return pathname === href || pathname.startsWith(`${href}/`)
+  }
+
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const query = searchQuery.trim()
+    router.push(query ? `/explore?search=${encodeURIComponent(query)}` : "/explore")
   }
 
   const UserMenu = ({ align = "end" }: { align?: "end" | "start" }) => (
@@ -111,6 +122,19 @@ export function Navigation() {
     </DropdownMenu>
   )
 
+  const MessageButton = ({ compact = false }: { compact?: boolean }) => (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
+          <Link href={user ? "/teams" : "/auth/login?redirect=/teams"} aria-label={t.nav.messages}>
+            <Mail className="h-4 w-4" />
+          </Link>
+        </Button>
+      </TooltipTrigger>
+      {!compact && <TooltipContent>{t.nav.messages}</TooltipContent>}
+    </Tooltip>
+  )
+
   return (
     <>
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r border-border bg-background lg:flex">
@@ -167,23 +191,39 @@ export function Navigation() {
             )}
           </nav>
         </div>
-
-        <div className="space-y-3 border-t border-border p-3">
-          <LanguageSwitcher />
-          {user ? (
-            <UserMenu align="start" />
-          ) : (
-            <div className="grid gap-2">
-              <Button variant="outline" asChild size="sm">
-                <Link href="/auth/login">{t.nav.signIn}</Link>
-              </Button>
-              <Button asChild size="sm">
-                <Link href="/auth/sign-up">{t.nav.getStarted}</Link>
-              </Button>
-            </div>
-          )}
-        </div>
       </aside>
+
+      <header className="sticky top-0 z-40 hidden h-16 items-center justify-end gap-3 border-b border-border bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:flex">
+        <form onSubmit={handleSearch} className="relative w-72 xl:w-96">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder={t.nav.searchProjects}
+            className="h-10 rounded-lg bg-card pl-10"
+          />
+        </form>
+
+        <TooltipProvider>
+          <div className="flex items-center gap-2">
+            <MessageButton />
+            <LanguageSwitcher />
+            {user ? (
+              <UserMenu />
+            ) : (
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" asChild size="sm">
+                  <Link href="/auth/login">{t.nav.signIn}</Link>
+                </Button>
+                <Button asChild size="sm">
+                  <Link href="/auth/sign-up">{t.nav.getStarted}</Link>
+                </Button>
+              </div>
+            )}
+          </div>
+        </TooltipProvider>
+      </header>
 
       <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:hidden">
         <div className="flex h-16 items-center justify-between px-4 sm:px-6">
@@ -195,6 +235,14 @@ export function Navigation() {
           </Link>
 
           <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
+                <Link href="/explore" aria-label={t.nav.searchProjects}>
+                  <Search className="h-4 w-4" />
+                </Link>
+              </Button>
+              <MessageButton compact />
+            </TooltipProvider>
             <LanguageSwitcher />
             {user ? (
               <>

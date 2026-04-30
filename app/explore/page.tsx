@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { Navigation } from "@/components/navigation"
 import { ProjectCard } from "@/components/project-card"
 import { Button } from "@/components/ui/button"
@@ -21,11 +22,17 @@ const popularSkills = [
   "Design", "Marketing", "Writing", "Video", "Community", "Product", "AI/ML", "No-code"
 ]
 
-export default function ExplorePage() {
+function ExploreContent() {
+  const searchParams = useSearchParams()
+  const urlSearchQuery = searchParams.get("search") || ""
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [selectedSkills, setSelectedSkills] = useState<string[]>([])
   const supabase = createClient()
+
+  useEffect(() => {
+    setSearchQuery(urlSearchQuery)
+  }, [urlSearchQuery])
 
   const { data: projects, isLoading } = useSWR(
     ["projects", statusFilter, searchQuery],
@@ -222,5 +229,13 @@ export default function ExplorePage() {
         </div>
       </main>
     </div>
+  )
+}
+
+export default function ExplorePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background lg:pl-64"><Navigation /></div>}>
+      <ExploreContent />
+    </Suspense>
   )
 }
