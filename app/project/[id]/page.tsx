@@ -303,7 +303,7 @@ export default function ProjectDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background lg:pl-64">
         <Navigation />
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -314,7 +314,7 @@ export default function ProjectDetailPage() {
 
   if (!id) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background lg:pl-64">
         <Navigation />
         <main className="mx-auto max-w-4xl px-4 py-16 text-center">
           <h1 className="text-2xl font-bold">Loading...</h1>
@@ -329,7 +329,7 @@ export default function ProjectDetailPage() {
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background lg:pl-64">
         <Navigation />
         <main className="mx-auto max-w-4xl px-4 py-16 text-center">
           <h1 className="text-2xl font-bold">Project not found</h1>
@@ -360,7 +360,7 @@ export default function ProjectDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background lg:pl-64">
       <Navigation />
 
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">

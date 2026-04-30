@@ -12,7 +12,7 @@ export default function HomePage() {
   const stepIcons = [Lightbulb, Compass, MessageSquare]
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background lg:pl-64">
       <Navigation />
       <main>
         <section className="px-4 pb-14 pt-10 sm:px-6 lg:px-8">

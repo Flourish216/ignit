@@ -215,7 +215,7 @@ function CreateProjectContent() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background lg:pl-64">
         <Navigation />
         <main className="mx-auto max-w-4xl px-4 py-16 sm:px-6 lg:px-8">
           <Card className="text-center">
@@ -235,7 +235,7 @@ function CreateProjectContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background lg:pl-64">
       <Navigation />
 
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
