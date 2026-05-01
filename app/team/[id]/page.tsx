@@ -191,6 +191,7 @@ export default function TeamWorkspacePage() {
   const [newChannelName, setNewChannelName] = useState("")
   const [newChannelDescription, setNewChannelDescription] = useState("")
   const [isCreatingChannel, setIsCreatingChannel] = useState(false)
+  const [isCreatingDefaultChannel, setIsCreatingDefaultChannel] = useState(false)
   const [igniMode, setIgniMode] = useState<IgniMode>("plan")
   const [isAskingIgni, setIsAskingIgni] = useState(false)
   const [igniError, setIgniError] = useState<string | null>(null)
@@ -374,6 +375,33 @@ export default function TeamWorkspacePage() {
     : details.looking_for
       ? `Start with the person you were looking for: ${details.looking_for}`
       : "Agree on the first small thing you can do together."
+
+  useEffect(() => {
+    if (!user || !team || !isOwner || channels === undefined || channels.length > 0 || isCreatingDefaultChannel) return
+
+    const createDefaultChannel = async () => {
+      setIsCreatingDefaultChannel(true)
+      try {
+        const { error } = await supabase.from("channels").insert({
+          team_id: teamId,
+          name: "general",
+          description: "Start here. Chat, plan, and @igni when you need help.",
+          type: "text",
+          is_default: true,
+          created_by: user.id,
+        })
+
+        if (error) throw error
+        mutate(`channels-${teamId}`)
+      } catch (error) {
+        console.error("Failed to create default channel:", error)
+      } finally {
+        setIsCreatingDefaultChannel(false)
+      }
+    }
+
+    createDefaultChannel()
+  }, [channels, isCreatingDefaultChannel, isOwner, supabase, team, teamId, user])
 
   const handleAskIgni = async (question: string, mode: IgniMode = igniMode) => {
     if (!question.trim() || !activeChannelId || !user || !isWorkspaceMember) return

@@ -208,6 +208,18 @@ export default function SparkDetailPage() {
 
       if (!team?.id) throw new Error("Could not open workspace")
 
+      await supabase
+        .from("team_members")
+        .upsert(
+          {
+            team_id: team.id,
+            user_id: user.id,
+            role: "owner",
+            status: "accepted",
+          },
+          { onConflict: "team_id,user_id" },
+        )
+
       const { data: defaultChannel } = await supabase
         .from("channels")
         .select("id")

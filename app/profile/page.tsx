@@ -455,10 +455,7 @@ export default function ProfilePage() {
                       <Gamepad2 className="h-3.5 w-3.5" />
                       Igni
                     </Badge>
-                    <h2 className="mt-3 text-2xl font-semibold text-foreground">Igni voice</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Generated from your own words and Sparks, not from self-selected labels.
-                    </p>
+                    <h2 className="mt-3 font-serif text-4xl italic text-foreground">Igni</h2>
                   </div>
                   <Button onClick={generateCompanionLines} disabled={isGenerating} size="sm">
                     {isGenerating ? (
