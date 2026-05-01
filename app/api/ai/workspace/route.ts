@@ -98,11 +98,24 @@ export async function POST(request: Request) {
       .select(`
         content,
         created_at,
-        user:profiles(full_name)
+        user_id
       `)
       .eq("project_id", team.project_id)
       .order("created_at", { ascending: false })
       .limit(30)
+
+    const messageUserIds = Array.from(
+      new Set((recentMessages || []).map((message: any) => message.user_id).filter(Boolean)),
+    )
+    const { data: messageProfiles } = messageUserIds.length
+      ? await supabase
+          .from("profiles")
+          .select("id, full_name")
+          .in("id", messageUserIds)
+      : { data: [] }
+    const messageProfilesById = new Map(
+      (messageProfiles || []).map((profile: any) => [profile.id, profile.full_name]),
+    )
 
     const details = (project?.ai_breakdown || {}) as SparkBreakdown
     const selectedMode = normalizeMode(mode)
@@ -111,9 +124,7 @@ export async function POST(request: Request) {
       .slice()
       .reverse()
       .map((message: any) => {
-        const name = Array.isArray(message.user)
-          ? message.user[0]?.full_name
-          : message.user?.full_name
+        const name = messageProfilesById.get(message.user_id)
         const isIgniReply = typeof message.content === "string" && message.content.startsWith(igniReplyPrefix)
         const content = isIgniReply ? message.content.slice(igniReplyPrefix.length).trim() : message.content
         return `${isIgniReply ? "Igni" : name || "Someone"}: ${content}`

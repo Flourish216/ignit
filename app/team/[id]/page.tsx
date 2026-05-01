@@ -242,7 +242,7 @@ export default function TeamWorkspacePage() {
 
   const projectId = team?.project_id
 
-  const { data: messages, mutate: mutateMessages } = useSWR(
+  const { data: messages, error: messagesError, mutate: mutateMessages } = useSWR(
     projectId ? `workspace-messages-${projectId}` : null,
     async () => {
       const { data, error } = await supabase
@@ -251,8 +251,7 @@ export default function TeamWorkspacePage() {
           id,
           content,
           created_at,
-          user_id,
-          user:profiles(id, full_name, avatar_url)
+          user_id
         `)
         .eq("project_id", projectId)
         .order("created_at", { ascending: true })
@@ -260,9 +259,21 @@ export default function TeamWorkspacePage() {
 
       if (error) throw error
 
-      return (data as unknown as MessageRow[]).map((message) => ({
+      const rows = data as unknown as MessageRow[]
+      const profileIds = Array.from(new Set(rows.map((message) => message.user_id).filter(Boolean)))
+
+      const { data: profiles } = profileIds.length
+        ? await supabase
+            .from("profiles")
+            .select("id, full_name, avatar_url")
+            .in("id", profileIds)
+        : { data: [] }
+
+      const profilesById = new Map((profiles as Profile[]).map((profile) => [profile.id, profile]))
+
+      return rows.map((message) => ({
         ...message,
-        user: firstRelation(message.user),
+        user: profilesById.get(message.user_id) || null,
       }))
     },
   )
@@ -725,6 +736,11 @@ export default function TeamWorkspacePage() {
               )}
               {sendError && (
                 <p className="mb-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{sendError}</p>
+              )}
+              {messagesError && (
+                <p className="mb-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  {messagesError.message || "Could not load messages."}
+                </p>
               )}
               {setupError && (
                 <p className="mb-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{setupError}</p>
