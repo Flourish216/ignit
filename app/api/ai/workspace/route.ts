@@ -14,6 +14,8 @@ type SparkBreakdown = {
 
 type WorkspaceMode = "plan" | "brainstorm" | "research" | "recap"
 
+const igniReplyPrefix = "__igni_reply__\n"
+
 const modeInstruction: Record<WorkspaceMode, string> = {
   plan: "Turn the workspace context into a concrete plan with the next few steps. Prefer specific actions over strategy.",
   brainstorm: "Generate useful ideas, options, and tradeoffs for the team. Keep the ideas grounded in the Spark.",
@@ -124,7 +126,9 @@ export async function POST(request: Request) {
         const name = Array.isArray(message.user)
           ? message.user[0]?.full_name
           : message.user?.full_name
-        return `${name || "Someone"}: ${message.content}`
+        const isIgniReply = typeof message.content === "string" && message.content.startsWith(igniReplyPrefix)
+        const content = isIgniReply ? message.content.slice(igniReplyPrefix.length).trim() : message.content
+        return `${isIgniReply ? "Igni" : name || "Someone"}: ${content}`
       })
       .join("\n")
 
