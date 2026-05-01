@@ -328,6 +328,28 @@ export default function TeamWorkspacePage() {
     : details.looking_for
       ? `Start with the person you were looking for: ${details.looking_for}`
       : "Agree on the first small thing you can do together."
+  const currentMember = visibleMembers.find((member) => member.user_id === user?.id)
+  const currentUserProfile: Profile | null = user
+    ? {
+        id: user.id,
+        full_name:
+          (isOwner ? ownerProfile?.full_name : currentMember?.user?.full_name) ||
+          user.user_metadata?.full_name ||
+          user.email?.split("@")[0] ||
+          "You",
+        avatar_url:
+          (isOwner ? ownerProfile?.avatar_url : currentMember?.user?.avatar_url) ||
+          user.user_metadata?.avatar_url ||
+          null,
+      }
+    : null
+
+  const appendLocalMessage = (message: Message) => {
+    mutateMessages((currentMessages = []) => {
+      if (currentMessages.some((currentMessage) => currentMessage.id === message.id)) return currentMessages
+      return [...currentMessages, message]
+    }, false)
+  }
 
   useEffect(() => {
     if (!user || !team || !isOwner || isRepairingWorkspace) return
@@ -387,13 +409,23 @@ export default function TeamWorkspacePage() {
       const answer = typeof data.answer === "string" ? data.answer.trim() : ""
       if (!answer) throw new Error("Igni returned an empty answer")
 
-      const { error } = await supabase.from("messages").insert({
-        project_id: projectId,
-        user_id: user.id,
-        content: `${igniReplyPrefix}${answer}`,
-      })
+      const { data: insertedReply, error } = await supabase
+        .from("messages")
+        .insert({
+          project_id: projectId,
+          user_id: user.id,
+          content: `${igniReplyPrefix}${answer}`,
+        })
+        .select("id, content, created_at, user_id")
+        .single()
 
       if (error) throw error
+      if (insertedReply && currentUserProfile) {
+        appendLocalMessage({
+          ...(insertedReply as MessageRow),
+          user: currentUserProfile,
+        })
+      }
       mutateMessages()
     } catch (error) {
       setIgniError(error instanceof Error ? error.message : "Could not ask Igni")
@@ -416,13 +448,23 @@ export default function TeamWorkspacePage() {
     setSendError(null)
 
     try {
-      const { error } = await supabase.from("messages").insert({
-        project_id: projectId,
-        user_id: user.id,
-        content,
-      })
+      const { data: insertedMessage, error } = await supabase
+        .from("messages")
+        .insert({
+          project_id: projectId,
+          user_id: user.id,
+          content,
+        })
+        .select("id, content, created_at, user_id")
+        .single()
 
       if (error) throw error
+      if (insertedMessage && currentUserProfile) {
+        appendLocalMessage({
+          ...(insertedMessage as MessageRow),
+          user: currentUserProfile,
+        })
+      }
       mutateMessages()
 
       if (shouldAskIgni) {
@@ -675,6 +717,24 @@ export default function TeamWorkspacePage() {
                       </div>
                     )
                   })}
+                  {isAskingIgni && (
+                    <div className="flex gap-3 rounded-lg border border-primary/15 bg-primary/5 px-2 py-1.5">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                        <Bot className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-foreground">Igni</span>
+                          <span className="text-xs text-muted-foreground">thinking</span>
+                        </div>
+                        <div className="mt-2 flex gap-1">
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" />
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:120ms]" />
+                          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary [animation-delay:240ms]" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div ref={messagesEndRef} />
                 </div>
               ) : (
