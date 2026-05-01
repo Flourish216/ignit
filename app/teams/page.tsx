@@ -434,25 +434,6 @@ export default function TeamsPage() {
               { onConflict: "team_id,user_id" },
             )
 
-          const { data: defaultChannel } = await supabase
-            .from("channels")
-            .select("id")
-            .eq("team_id", team.id)
-            .eq("name", "general")
-            .maybeSingle()
-
-          if (!defaultChannel) {
-            await supabase
-              .from("channels")
-              .insert({
-                team_id: team.id,
-                name: "general",
-                description: "Start here. Chat, plan, and @igni when you need help.",
-                is_default: true,
-                type: "text",
-                created_by: user.id,
-              })
-          }
         }
 
         // Add member to team
@@ -530,26 +511,6 @@ export default function TeamsPage() {
           },
           { onConflict: "team_id,user_id" },
         )
-
-      const { data: defaultChannel } = await supabase
-        .from("channels")
-        .select("id")
-        .eq("team_id", team.id)
-        .eq("name", "general")
-        .maybeSingle()
-
-      if (!defaultChannel) {
-        await supabase
-          .from("channels")
-          .insert({
-            team_id: team.id,
-            name: "general",
-            description: "Start here. Chat, plan, and @igni when you need help.",
-            is_default: true,
-            type: "text",
-            created_by: user.id,
-          })
-      }
 
       mutate(`project-teams-${user.id}`)
       router.push(`/team/${team.id}`)

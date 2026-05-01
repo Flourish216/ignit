@@ -8,17 +8,13 @@ import useSWR, { mutate } from "swr"
 import {
   ArrowLeft,
   Bot,
-  ClipboardList,
-  Edit3,
   Hash,
   Lightbulb,
   Loader2,
   MessageSquare,
-  Plus,
   Search,
   Send,
   Sparkles,
-  Trash2,
   Users,
   Wand2,
 } from "lucide-react"
@@ -26,14 +22,6 @@ import { Navigation } from "@/components/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import {
   Sheet,
@@ -74,19 +62,10 @@ type WorkspaceTeam = {
   project: WorkspaceProject | null
 }
 
-type Channel = {
-  id: string
-  name: string
-  description: string | null
-  type: "text" | "voice" | "announcement"
-  is_default: boolean
-}
-
 type Message = {
   id: string
   content: string
   created_at: string
-  edited_at: string | null
   user_id: string
   user?: {
     id: string
@@ -154,14 +133,6 @@ const getStatusLabel = (status?: string, sparkStatus?: string) => {
   return status || "open"
 }
 
-const cleanChannelName = (name: string) =>
-  name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-
 const firstRelation = <T,>(relation: T | T[] | null | undefined) =>
   Array.isArray(relation) ? relation[0] || null : relation || null
 
@@ -182,16 +153,8 @@ export default function TeamWorkspacePage() {
   const supabase = createClient()
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null)
   const [messageInput, setMessageInput] = useState("")
   const [isSending, setIsSending] = useState(false)
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
-  const [editContent, setEditContent] = useState("")
-  const [showNewChannelDialog, setShowNewChannelDialog] = useState(false)
-  const [newChannelName, setNewChannelName] = useState("")
-  const [newChannelDescription, setNewChannelDescription] = useState("")
-  const [isCreatingChannel, setIsCreatingChannel] = useState(false)
-  const [isCreatingDefaultChannel, setIsCreatingDefaultChannel] = useState(false)
   const [isRepairingWorkspace, setIsRepairingWorkspace] = useState(false)
   const [igniMode, setIgniMode] = useState<IgniMode>("plan")
   const [isAskingIgni, setIsAskingIgni] = useState(false)
@@ -277,45 +240,21 @@ export default function TeamWorkspacePage() {
     },
   )
 
-  const { data: channels, error: channelsError, mutate: mutateChannels } = useSWR(
-    teamId ? `channels-${teamId}` : null,
-    async () => {
-      const { data, error } = await supabase
-        .from("channels")
-        .select("id, name, description, type, is_default")
-        .eq("team_id", teamId)
-        .order("is_default", { ascending: false })
-        .order("created_at", { ascending: true })
-
-      if (error) throw error
-      return data as Channel[]
-    },
-  )
-
-  useEffect(() => {
-    if (channels && channels.length > 0 && !selectedChannelId) {
-      const defaultChannel = channels.find((channel) => channel.is_default) || channels[0]
-      setSelectedChannelId(defaultChannel.id)
-    }
-  }, [channels, selectedChannelId])
-
-  const activeChannelId = selectedChannelId || channels?.[0]?.id || null
-  const selectedChannel = channels?.find((channel) => channel.id === activeChannelId) || channels?.[0] || null
+  const projectId = team?.project_id
 
   const { data: messages, mutate: mutateMessages } = useSWR(
-    activeChannelId ? `messages-${activeChannelId}` : null,
+    projectId ? `workspace-messages-${projectId}` : null,
     async () => {
       const { data, error } = await supabase
-        .from("channel_messages")
+        .from("messages")
         .select(`
           id,
           content,
           created_at,
-          edited_at,
           user_id,
           user:profiles(id, full_name, avatar_url)
         `)
-        .eq("channel_id", activeChannelId)
+        .eq("project_id", projectId)
         .order("created_at", { ascending: true })
         .limit(100)
 
@@ -329,17 +268,17 @@ export default function TeamWorkspacePage() {
   )
 
   useEffect(() => {
-    if (!activeChannelId) return
+    if (!projectId) return
 
     const subscription = supabase
-      .channel(`workspace-channel-${activeChannelId}`)
+      .channel(`workspace-project-${projectId}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
-          table: "channel_messages",
-          filter: `channel_id=eq.${activeChannelId}`,
+          table: "messages",
+          filter: `project_id=eq.${projectId}`,
         },
         () => {
           mutateMessages()
@@ -350,7 +289,7 @@ export default function TeamWorkspacePage() {
     return () => {
       subscription.unsubscribe()
     }
-  }, [activeChannelId, mutateMessages, supabase])
+  }, [mutateMessages, projectId, supabase])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -378,34 +317,6 @@ export default function TeamWorkspacePage() {
     : details.looking_for
       ? `Start with the person you were looking for: ${details.looking_for}`
       : "Agree on the first small thing you can do together."
-
-  useEffect(() => {
-    if (!user || !team || !isOwner || channels === undefined || channels.length > 0 || isCreatingDefaultChannel) return
-
-    const createDefaultChannel = async () => {
-      setIsCreatingDefaultChannel(true)
-      try {
-        const { error } = await supabase.from("channels").insert({
-          team_id: teamId,
-          name: "general",
-          description: "Start here. Chat, plan, and @igni when you need help.",
-          type: "text",
-          is_default: true,
-          created_by: user.id,
-        })
-
-        if (error) throw error
-        mutateChannels()
-      } catch (error) {
-        console.error("Failed to create default channel:", error)
-        setSetupError(error instanceof Error ? error.message : "Could not create the default channel.")
-      } finally {
-        setIsCreatingDefaultChannel(false)
-      }
-    }
-
-    createDefaultChannel()
-  }, [channels, isCreatingDefaultChannel, isOwner, mutateChannels, supabase, team, teamId, user])
 
   useEffect(() => {
     if (!user || !team || !isOwner || isRepairingWorkspace) return
@@ -441,7 +352,7 @@ export default function TeamWorkspacePage() {
   }, [isOwner, isRepairingWorkspace, mutateMembers, supabase, team, teamId, user])
 
   const handleAskIgni = async (question: string, mode: IgniMode = igniMode) => {
-    if (!question.trim() || !activeChannelId || !user || !isWorkspaceMember) return
+    if (!question.trim() || !projectId || !user || !isWorkspaceMember) return
 
     setIsAskingIgni(true)
     setIgniError(null)
@@ -452,7 +363,6 @@ export default function TeamWorkspacePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           teamId,
-          channelId: activeChannelId,
           question: question.trim(),
           mode,
         }),
@@ -466,8 +376,8 @@ export default function TeamWorkspacePage() {
       const answer = typeof data.answer === "string" ? data.answer.trim() : ""
       if (!answer) throw new Error("Igni returned an empty answer")
 
-      const { error } = await supabase.from("channel_messages").insert({
-        channel_id: activeChannelId,
+      const { error } = await supabase.from("messages").insert({
+        project_id: projectId,
         user_id: user.id,
         content: `${igniReplyPrefix}${answer}`,
       })
@@ -483,7 +393,7 @@ export default function TeamWorkspacePage() {
 
   const handleSendMessage = async (event?: FormEvent) => {
     event?.preventDefault()
-    if (!messageInput.trim() || !activeChannelId || !user || !isWorkspaceMember) return
+    if (!messageInput.trim() || !projectId || !user || !isWorkspaceMember) return
 
     const content = messageInput.trim()
     const shouldAskIgni = isIgniPrompt(content)
@@ -495,8 +405,8 @@ export default function TeamWorkspacePage() {
     setSendError(null)
 
     try {
-      const { error } = await supabase.from("channel_messages").insert({
-        channel_id: activeChannelId,
+      const { error } = await supabase.from("messages").insert({
+        project_id: projectId,
         user_id: user.id,
         content,
       })
@@ -514,68 +424,6 @@ export default function TeamWorkspacePage() {
       setMessageInput(content)
     } finally {
       setIsSending(false)
-    }
-  }
-
-  const handleEditMessage = async (messageId: string) => {
-    if (!editContent.trim()) return
-
-    try {
-      const { error } = await supabase
-        .from("channel_messages")
-        .update({
-          content: editContent.trim(),
-          edited_at: new Date().toISOString(),
-        })
-        .eq("id", messageId)
-
-      if (error) throw error
-      mutateMessages()
-      setEditingMessageId(null)
-      setEditContent("")
-    } catch (error) {
-      console.error("Failed to edit message:", error)
-    }
-  }
-
-  const handleDeleteMessage = async (messageId: string) => {
-    if (!window.confirm("Delete this message?")) return
-
-    try {
-      const { error } = await supabase.from("channel_messages").delete().eq("id", messageId)
-
-      if (error) throw error
-      mutateMessages()
-    } catch (error) {
-      console.error("Failed to delete message:", error)
-    }
-  }
-
-  const handleCreateChannel = async () => {
-    if (!newChannelName.trim() || !user || !isOwner) return
-
-    setIsCreatingChannel(true)
-    try {
-      const channelName = cleanChannelName(newChannelName) || "new-channel"
-      const { error } = await supabase.from("channels").insert({
-        team_id: teamId,
-        name: channelName,
-        description: newChannelDescription.trim() || null,
-        type: "text",
-        created_by: user.id,
-      })
-
-      if (error) throw error
-
-      mutate(`channels-${teamId}`)
-      setShowNewChannelDialog(false)
-      setNewChannelName("")
-      setNewChannelDescription("")
-    } catch (error) {
-      console.error("Failed to create channel:", error)
-      setSetupError(error instanceof Error ? error.message : "Could not create channel.")
-    } finally {
-      setIsCreatingChannel(false)
     }
   }
 
@@ -655,59 +503,18 @@ export default function TeamWorkspacePage() {
 
             <section className="min-h-0 flex-1 rounded-lg border border-border bg-card p-3">
               <div className="mb-2 flex items-center justify-between px-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Channels</p>
-                {isOwner && (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-7 w-7"
-                    onClick={() => setShowNewChannelDialog(true)}
-                    aria-label="Create channel"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                )}
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Chat</p>
               </div>
 
               <div className="space-y-1 overflow-y-auto">
-                {channelsError && (
-                  <div className="mb-2 rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
-                    {channelsError.message || "Could not load channels."}
-                  </div>
-                )}
-                {channels && channels.length > 0 ? (
-                  channels.map((channel) => (
-                    <button
-                      key={channel.id}
-                      type="button"
-                      onClick={() => setSelectedChannelId(channel.id)}
-                      className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                        activeChannelId === channel.id
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                      }`}
-                    >
-                      <Hash className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{channel.name}</span>
-                      {channel.is_default && (
-                        <span className="ml-auto rounded-full bg-background/20 px-1.5 py-0.5 text-[10px]">main</span>
-                      )}
-                    </button>
-                  ))
-                ) : (
-                  <div className="rounded-md border border-dashed border-border p-4 text-center">
-                    <Hash className="mx-auto h-5 w-5 text-muted-foreground" />
-                    <p className="mt-2 text-sm font-medium text-foreground">
-                      {isCreatingDefaultChannel ? "Creating #general..." : "No channel yet"}
-                    </p>
-                    {isOwner && (
-                      <Button type="button" size="sm" className="mt-3" onClick={() => setShowNewChannelDialog(true)}>
-                        Create Channel
-                      </Button>
-                    )}
-                  </div>
-                )}
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-md bg-primary px-3 py-2 text-left text-sm text-primary-foreground"
+                >
+                  <Hash className="h-4 w-4 shrink-0" />
+                  <span className="truncate">general</span>
+                  <span className="ml-auto rounded-full bg-background/20 px-1.5 py-0.5 text-[10px]">main</span>
+                </button>
               </div>
             </section>
 
@@ -728,10 +535,10 @@ export default function TeamWorkspacePage() {
                 </div>
                 <div className="min-w-0">
                   <h2 className="truncate text-sm font-semibold text-foreground">
-                    {selectedChannel?.name || "general"}
+                    general
                   </h2>
                   <p className="truncate text-xs text-muted-foreground">
-                    {selectedChannel?.description || "Chat, plan, and @igni when you need help."}
+                    Chat, plan, and @igni when you need help.
                   </p>
                 </div>
               </div>
@@ -815,7 +622,6 @@ export default function TeamWorkspacePage() {
                 <div className="space-y-5">
                   {messages.map((message) => {
                     const messageIsIgni = isIgniReply(message.content)
-                    const isOwnMessage = message.user_id === user.id
                     const content = getMessageContent(message.content)
 
                     return (
@@ -849,73 +655,12 @@ export default function TeamWorkspacePage() {
                             <span className="text-xs text-muted-foreground">
                               {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
                             </span>
-                            {message.edited_at && !messageIsIgni && (
-                              <span className="text-xs text-muted-foreground">edited</span>
-                            )}
                           </div>
 
-                          {editingMessageId === message.id ? (
-                            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                              <Input
-                                value={editContent}
-                                onChange={(event) => setEditContent(event.target.value)}
-                                onKeyDown={(event) => {
-                                  if (event.key === "Enter") handleEditMessage(message.id)
-                                  if (event.key === "Escape") {
-                                    setEditingMessageId(null)
-                                    setEditContent("")
-                                  }
-                                }}
-                                autoFocus
-                              />
-                              <div className="flex gap-2">
-                                <Button size="sm" onClick={() => handleEditMessage(message.id)}>Save</Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    setEditingMessageId(null)
-                                    setEditContent("")
-                                  }}
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
-                              {content}
-                            </p>
-                          )}
+                          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
+                            {content}
+                          </p>
                         </div>
-
-                        {isOwnMessage && !messageIsIgni && editingMessageId !== message.id && (
-                          <div className="flex shrink-0 gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8"
-                              onClick={() => {
-                                setEditingMessageId(message.id)
-                                setEditContent(message.content)
-                              }}
-                              aria-label="Edit message"
-                            >
-                              <Edit3 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleDeleteMessage(message.id)}
-                              aria-label="Delete message"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )}
                       </div>
                     )
                   })}
@@ -990,69 +735,26 @@ export default function TeamWorkspacePage() {
                   value={messageInput}
                   onChange={(event) => setMessageInput(event.target.value)}
                   placeholder={
-                    isCreatingDefaultChannel
-                      ? "Creating #general..."
-                      : isWorkspaceMember && activeChannelId
-                      ? `Message #${selectedChannel?.name || "general"} or @igni plan our next step`
+                    isWorkspaceMember && projectId
+                      ? "Message #general or @igni plan our next step"
                       : "Workspace chat opens after a Match"
                   }
-                  disabled={!isWorkspaceMember || !activeChannelId || isSending || isCreatingDefaultChannel}
+                  disabled={!isWorkspaceMember || !projectId || isSending}
                   className="h-10 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
                 />
                 <Button
                   type="submit"
                   size="icon"
-                  disabled={!messageInput.trim() || !isWorkspaceMember || !activeChannelId || isSending || isAskingIgni || isCreatingDefaultChannel}
+                  disabled={!messageInput.trim() || !isWorkspaceMember || !projectId || isSending || isAskingIgni}
                   aria-label="Send message"
                 >
-                  {isSending || isAskingIgni || isCreatingDefaultChannel ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {isSending || isAskingIgni ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </div>
             </form>
           </section>
         </div>
       </main>
-
-      <Dialog open={showNewChannelDialog} onOpenChange={setShowNewChannelDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create channel</DialogTitle>
-            <DialogDescription>
-              Add a focused space for planning, links, or a specific part of this Spark.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-foreground">Channel name</label>
-              <div className="relative">
-                <Hash className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={newChannelName}
-                  onChange={(event) => setNewChannelName(event.target.value)}
-                  placeholder="planning"
-                  className="pl-9"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-foreground">Description</label>
-              <Input
-                value={newChannelDescription}
-                onChange={(event) => setNewChannelDescription(event.target.value)}
-                placeholder="What should people use this for?"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowNewChannelDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreateChannel} disabled={!newChannelName.trim() || isCreatingChannel}>
-              {isCreatingChannel ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Channel"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

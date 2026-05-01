@@ -27,7 +27,7 @@ const normalizeMode = (mode: unknown): WorkspaceMode =>
   mode === "brainstorm" || mode === "research" || mode === "recap" ? mode : "plan"
 
 export async function POST(request: Request) {
-  const { teamId, channelId, question, mode } = await request.json()
+  const { teamId, question, mode } = await request.json()
 
   if (!teamId || !question?.trim()) {
     return new Response("Workspace and question are required", { status: 400 })
@@ -93,28 +93,16 @@ export async function POST(request: Request) {
       .eq("status", "accepted")
       .limit(12)
 
-    const { data: channels } = await supabase
-      .from("channels")
-      .select("id, name")
-      .eq("team_id", teamId)
-      .order("is_default", { ascending: false })
-      .order("created_at", { ascending: true })
-
-    const channelIds = (channels || []).map((channel) => channel.id)
-    const scopedChannelIds = channelId && channelIds.includes(channelId) ? [channelId] : channelIds
-
-    const { data: recentMessages } = scopedChannelIds.length
-      ? await supabase
-          .from("channel_messages")
-          .select(`
-            content,
-            created_at,
-            user:profiles(full_name)
-          `)
-          .in("channel_id", scopedChannelIds)
-          .order("created_at", { ascending: false })
-          .limit(30)
-      : { data: [] }
+    const { data: recentMessages } = await supabase
+      .from("messages")
+      .select(`
+        content,
+        created_at,
+        user:profiles(full_name)
+      `)
+      .eq("project_id", team.project_id)
+      .order("created_at", { ascending: false })
+      .limit(30)
 
     const details = (project?.ai_breakdown || {}) as SparkBreakdown
     const selectedMode = normalizeMode(mode)
