@@ -192,9 +192,12 @@ export default function TeamWorkspacePage() {
   const [newChannelDescription, setNewChannelDescription] = useState("")
   const [isCreatingChannel, setIsCreatingChannel] = useState(false)
   const [isCreatingDefaultChannel, setIsCreatingDefaultChannel] = useState(false)
+  const [isRepairingWorkspace, setIsRepairingWorkspace] = useState(false)
   const [igniMode, setIgniMode] = useState<IgniMode>("plan")
   const [isAskingIgni, setIsAskingIgni] = useState(false)
   const [igniError, setIgniError] = useState<string | null>(null)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const [setupError, setSetupError] = useState<string | null>(null)
 
   const { data: user, isLoading: userLoading } = useSWR(
     "user",
@@ -250,7 +253,7 @@ export default function TeamWorkspacePage() {
     },
   )
 
-  const { data: members } = useSWR(
+  const { data: members, mutate: mutateMembers } = useSWR(
     teamId ? `team-members-${teamId}` : null,
     async () => {
       const { data, error } = await supabase
@@ -274,7 +277,7 @@ export default function TeamWorkspacePage() {
     },
   )
 
-  const { data: channels } = useSWR(
+  const { data: channels, error: channelsError, mutate: mutateChannels } = useSWR(
     teamId ? `channels-${teamId}` : null,
     async () => {
       const { data, error } = await supabase
@@ -392,16 +395,50 @@ export default function TeamWorkspacePage() {
         })
 
         if (error) throw error
-        mutate(`channels-${teamId}`)
+        mutateChannels()
       } catch (error) {
         console.error("Failed to create default channel:", error)
+        setSetupError(error instanceof Error ? error.message : "Could not create the default channel.")
       } finally {
         setIsCreatingDefaultChannel(false)
       }
     }
 
     createDefaultChannel()
-  }, [channels, isCreatingDefaultChannel, isOwner, supabase, team, teamId, user])
+  }, [channels, isCreatingDefaultChannel, isOwner, mutateChannels, supabase, team, teamId, user])
+
+  useEffect(() => {
+    if (!user || !team || !isOwner || isRepairingWorkspace) return
+
+    const repairWorkspace = async () => {
+      setIsRepairingWorkspace(true)
+      setSetupError(null)
+
+      try {
+        const { error: memberError } = await supabase
+          .from("team_members")
+          .upsert(
+            {
+              team_id: teamId,
+              user_id: user.id,
+              role: "owner",
+              status: "accepted",
+            },
+            { onConflict: "team_id,user_id" },
+          )
+
+        if (memberError) throw memberError
+        mutateMembers()
+      } catch (error) {
+        console.error("Failed to repair workspace membership:", error)
+        setSetupError(error instanceof Error ? error.message : "Could not repair workspace access.")
+      } finally {
+        setIsRepairingWorkspace(false)
+      }
+    }
+
+    repairWorkspace()
+  }, [isOwner, isRepairingWorkspace, mutateMembers, supabase, team, teamId, user])
 
   const handleAskIgni = async (question: string, mode: IgniMode = igniMode) => {
     if (!question.trim() || !activeChannelId || !user || !isWorkspaceMember) return
@@ -455,6 +492,7 @@ export default function TeamWorkspacePage() {
     setIsSending(true)
     setMessageInput("")
     setIgniError(null)
+    setSendError(null)
 
     try {
       const { error } = await supabase.from("channel_messages").insert({
@@ -472,6 +510,7 @@ export default function TeamWorkspacePage() {
       }
     } catch (error) {
       console.error("Failed to send message:", error)
+      setSendError(error instanceof Error ? error.message : "Could not send message.")
       setMessageInput(content)
     } finally {
       setIsSending(false)
@@ -534,6 +573,7 @@ export default function TeamWorkspacePage() {
       setNewChannelDescription("")
     } catch (error) {
       console.error("Failed to create channel:", error)
+      setSetupError(error instanceof Error ? error.message : "Could not create channel.")
     } finally {
       setIsCreatingChannel(false)
     }
@@ -631,6 +671,11 @@ export default function TeamWorkspacePage() {
               </div>
 
               <div className="space-y-1 overflow-y-auto">
+                {channelsError && (
+                  <div className="mb-2 rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+                    {channelsError.message || "Could not load channels."}
+                  </div>
+                )}
                 {channels && channels.length > 0 ? (
                   channels.map((channel) => (
                     <button
@@ -653,7 +698,9 @@ export default function TeamWorkspacePage() {
                 ) : (
                   <div className="rounded-md border border-dashed border-border p-4 text-center">
                     <Hash className="mx-auto h-5 w-5 text-muted-foreground" />
-                    <p className="mt-2 text-sm font-medium text-foreground">No channel yet</p>
+                    <p className="mt-2 text-sm font-medium text-foreground">
+                      {isCreatingDefaultChannel ? "Creating #general..." : "No channel yet"}
+                    </p>
                     {isOwner && (
                       <Button type="button" size="sm" className="mt-3" onClick={() => setShowNewChannelDialog(true)}>
                         Create Channel
@@ -931,26 +978,34 @@ export default function TeamWorkspacePage() {
               {igniError && (
                 <p className="mb-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{igniError}</p>
               )}
+              {sendError && (
+                <p className="mb-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{sendError}</p>
+              )}
+              {setupError && (
+                <p className="mb-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{setupError}</p>
+              )}
 
               <div className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2">
                 <Input
                   value={messageInput}
                   onChange={(event) => setMessageInput(event.target.value)}
                   placeholder={
-                    isWorkspaceMember && activeChannelId
+                    isCreatingDefaultChannel
+                      ? "Creating #general..."
+                      : isWorkspaceMember && activeChannelId
                       ? `Message #${selectedChannel?.name || "general"} or @igni plan our next step`
                       : "Workspace chat opens after a Match"
                   }
-                  disabled={!isWorkspaceMember || !activeChannelId || isSending}
+                  disabled={!isWorkspaceMember || !activeChannelId || isSending || isCreatingDefaultChannel}
                   className="h-10 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
                 />
                 <Button
                   type="submit"
                   size="icon"
-                  disabled={!messageInput.trim() || !isWorkspaceMember || !activeChannelId || isSending || isAskingIgni}
+                  disabled={!messageInput.trim() || !isWorkspaceMember || !activeChannelId || isSending || isAskingIgni || isCreatingDefaultChannel}
                   aria-label="Send message"
                 >
-                  {isSending || isAskingIgni ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {isSending || isAskingIgni || isCreatingDefaultChannel ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
               </div>
             </form>
