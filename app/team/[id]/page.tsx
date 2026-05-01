@@ -7,16 +7,20 @@ import { formatDistanceToNow } from "date-fns"
 import useSWR, { mutate } from "swr"
 import {
   ArrowLeft,
+  Bot,
   ClipboardList,
   Edit3,
   Hash,
+  Lightbulb,
   Loader2,
   MessageSquare,
   Plus,
+  Search,
   Send,
   Sparkles,
   Trash2,
   Users,
+  Wand2,
 } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -31,6 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { createClient } from "@/lib/supabase/client"
 
 type SparkBreakdown = {
@@ -101,6 +106,44 @@ type Profile = {
   avatar_url: string | null
 }
 
+type ProfileRelation = Profile | Profile[] | null
+
+type WorkspaceTeamRow = Omit<WorkspaceTeam, "project"> & {
+  project: WorkspaceProject | WorkspaceProject[] | null
+}
+
+type TeamMemberRow = Omit<TeamMember, "user"> & {
+  user?: ProfileRelation
+}
+
+type MessageRow = Omit<Message, "user"> & {
+  user?: ProfileRelation
+}
+
+type IgniMode = "plan" | "brainstorm" | "research" | "recap"
+
+type IgniTurn = {
+  id: string
+  mode: IgniMode
+  question: string
+  answer: string
+  createdAt: string
+}
+
+const igniModes: Array<{ id: IgniMode; label: string; icon: typeof Wand2 }> = [
+  { id: "plan", label: "Plan", icon: Wand2 },
+  { id: "brainstorm", label: "Ideas", icon: Lightbulb },
+  { id: "research", label: "Research", icon: Search },
+  { id: "recap", label: "Recap", icon: MessageSquare },
+]
+
+const igniPrompts: Array<{ mode: IgniMode; label: string; prompt: string }> = [
+  { mode: "plan", label: "This week", prompt: "Help us decide the first concrete thing to do this week." },
+  { mode: "brainstorm", label: "Options", prompt: "Give us a few good ways to start this Spark and the tradeoffs." },
+  { mode: "research", label: "What to check", prompt: "What should we look up or verify before we start?" },
+  { mode: "recap", label: "Summarize", prompt: "Summarize the recent chat and list decisions, open questions, and next actions." },
+]
+
 const getInitial = (name?: string | null) => name?.trim()?.[0]?.toUpperCase() || "I"
 
 const getStatusLabel = (status?: string, sparkStatus?: string) => {
@@ -118,6 +161,9 @@ const cleanChannelName = (name: string) =>
     .replace(/\s+/g, "-")
     .replace(/-+/g, "-")
 
+const firstRelation = <T,>(relation: T | T[] | null | undefined) =>
+  Array.isArray(relation) ? relation[0] || null : relation || null
+
 export default function TeamWorkspacePage() {
   const params = useParams()
   const router = useRouter()
@@ -134,6 +180,11 @@ export default function TeamWorkspacePage() {
   const [newChannelName, setNewChannelName] = useState("")
   const [newChannelDescription, setNewChannelDescription] = useState("")
   const [isCreatingChannel, setIsCreatingChannel] = useState(false)
+  const [igniMode, setIgniMode] = useState<IgniMode>("plan")
+  const [igniQuestion, setIgniQuestion] = useState("")
+  const [igniTurns, setIgniTurns] = useState<IgniTurn[]>([])
+  const [isAskingIgni, setIsAskingIgni] = useState(false)
+  const [igniError, setIgniError] = useState<string | null>(null)
 
   const { data: user, isLoading: userLoading } = useSWR(
     "user",
@@ -164,7 +215,12 @@ export default function TeamWorkspacePage() {
         .single()
 
       if (error) throw error
-      return data as WorkspaceTeam
+
+      const row = data as unknown as WorkspaceTeamRow
+      return {
+        ...row,
+        project: firstRelation(row.project),
+      } as WorkspaceTeam
     },
   )
 
@@ -200,7 +256,11 @@ export default function TeamWorkspacePage() {
         .eq("status", "accepted")
 
       if (error) throw error
-      return data as TeamMember[]
+
+      return (data as unknown as TeamMemberRow[]).map((member) => ({
+        ...member,
+        user: firstRelation(member.user),
+      }))
     },
   )
 
@@ -247,7 +307,11 @@ export default function TeamWorkspacePage() {
         .limit(100)
 
       if (error) throw error
-      return data as Message[]
+
+      return (data as unknown as MessageRow[]).map((message) => ({
+        ...message,
+        user: firstRelation(message.user),
+      }))
     },
   )
 
@@ -284,6 +348,24 @@ export default function TeamWorkspacePage() {
       router.push(`/auth/login?redirect=/team/${teamId}`)
     }
   }, [router, teamId, user])
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(`igni-workspace-${teamId}`)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed)) {
+          setIgniTurns(parsed.slice(0, 8))
+        }
+      }
+    } catch {
+      setIgniTurns([])
+    }
+  }, [teamId])
+
+  useEffect(() => {
+    window.localStorage.setItem(`igni-workspace-${teamId}`, JSON.stringify(igniTurns.slice(0, 8)))
+  }, [igniTurns, teamId])
 
   const isOwner = Boolean(user?.id && team?.project?.owner_id === user.id)
   const isWorkspaceMember = Boolean(
@@ -387,6 +469,51 @@ export default function TeamWorkspacePage() {
     }
   }
 
+  const handleAskIgni = async (override?: { question: string; mode: IgniMode }) => {
+    const question = (override?.question || igniQuestion).trim()
+    const mode = override?.mode || igniMode
+
+    if (!question || !isWorkspaceMember) return
+
+    setIsAskingIgni(true)
+    setIgniError(null)
+    if (!override) setIgniQuestion("")
+
+    try {
+      const response = await fetch("/api/ai/workspace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teamId,
+          channelId: activeChannelId,
+          question,
+          mode,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(await response.text())
+      }
+
+      const data = await response.json()
+      setIgniTurns((current) => [
+        {
+          id: `${Date.now()}`,
+          mode,
+          question,
+          answer: data.answer,
+          createdAt: new Date().toISOString(),
+        },
+        ...current,
+      ].slice(0, 8))
+    } catch (error) {
+      setIgniError(error instanceof Error ? error.message : "Could not ask Igni")
+      if (!override) setIgniQuestion(question)
+    } finally {
+      setIsAskingIgni(false)
+    }
+  }
+
   if (userLoading || user === undefined || teamLoading) {
     return (
       <div className="min-h-screen bg-background lg:pl-64">
@@ -451,7 +578,7 @@ export default function TeamWorkspacePage() {
           </Button>
         </div>
 
-        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)_260px]">
+        <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)_320px]">
           <aside className="space-y-4">
             <section className="rounded-lg border border-border bg-card p-4">
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -742,6 +869,122 @@ export default function TeamWorkspacePage() {
 
                 {!ownerProfile && visibleMembers.length === 0 && (
                   <p className="text-sm text-muted-foreground">No one is in this workspace yet.</p>
+                )}
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-primary/25 bg-card p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Bot className="h-4 w-4 text-primary" />
+                    Ask Igni
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Reads this Spark, people, and recent chat.
+                  </p>
+                </div>
+                <Badge variant="secondary">AI</Badge>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-1.5">
+                {igniModes.map((mode) => {
+                  const Icon = mode.icon
+                  const active = igniMode === mode.id
+                  return (
+                    <button
+                      key={mode.id}
+                      type="button"
+                      onClick={() => setIgniMode(mode.id)}
+                      className={`flex items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs transition-colors ${
+                        active
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />
+                      {mode.label}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {igniPrompts.map((prompt) => (
+                  <button
+                    key={prompt.label}
+                    type="button"
+                    onClick={() => {
+                      setIgniMode(prompt.mode)
+                      handleAskIgni({ question: prompt.prompt, mode: prompt.mode })
+                    }}
+                    disabled={!isWorkspaceMember || isAskingIgni}
+                    className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {prompt.label}
+                  </button>
+                ))}
+              </div>
+
+              <form
+                className="mt-3 space-y-2"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  handleAskIgni()
+                }}
+              >
+                <Textarea
+                  value={igniQuestion}
+                  onChange={(event) => setIgniQuestion(event.target.value)}
+                  placeholder="Ask Igni to plan, research, recap, or brainstorm..."
+                  disabled={!isWorkspaceMember || isAskingIgni}
+                  className="min-h-24 resize-none text-sm"
+                />
+                {igniError && (
+                  <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    {igniError}
+                  </p>
+                )}
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="w-full gap-2"
+                  disabled={!igniQuestion.trim() || !isWorkspaceMember || isAskingIgni}
+                >
+                  {isAskingIgni ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4" />
+                  )}
+                  Ask Igni
+                </Button>
+              </form>
+
+              <div className="mt-4 max-h-80 space-y-3 overflow-y-auto pr-1">
+                {igniTurns.length > 0 ? (
+                  igniTurns.map((turn) => (
+                    <div key={turn.id} className="rounded-lg border border-border bg-background p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <Badge variant="outline" className="text-[10px] capitalize">
+                          {turn.mode}
+                        </Badge>
+                        <span className="text-[10px] text-muted-foreground">
+                          {formatDistanceToNow(new Date(turn.createdAt), { addSuffix: true })}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs font-medium leading-5 text-foreground">{turn.question}</p>
+                      <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-muted-foreground">
+                        {turn.answer}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border p-4 text-center">
+                    <Bot className="mx-auto h-5 w-5 text-primary" />
+                    <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                      Ask for a plan, a recap, or what to verify before starting.
+                    </p>
+                  </div>
                 )}
               </div>
             </section>
