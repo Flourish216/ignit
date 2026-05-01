@@ -66,6 +66,7 @@ export default function TeamsPage() {
   const supabase = createClient()
   const [selectedApplication, setSelectedApplication] = useState<any>(null)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [openingWorkspaceId, setOpeningWorkspaceId] = useState<string | null>(null)
   const [activeView, setActiveView] = useState<"owned" | "member" | "applications">("owned")
 
   useEffect(() => {
@@ -420,6 +421,28 @@ export default function TeamsPage() {
           team = newTeam
         }
 
+        if (team?.id) {
+          const { data: defaultChannel } = await supabase
+            .from("channels")
+            .select("id")
+            .eq("team_id", team.id)
+            .eq("name", "general")
+            .maybeSingle()
+
+          if (!defaultChannel) {
+            await supabase
+              .from("channels")
+              .insert({
+                team_id: team.id,
+                name: "general",
+                description: "Start here. Chat, plan, and @igni when you need help.",
+                is_default: true,
+                type: "text",
+                created_by: user.id,
+              })
+          }
+        }
+
         // Add member to team
         await supabase
           .from("team_members")
@@ -445,6 +468,71 @@ export default function TeamsPage() {
       console.error("Error processing application:", error)
     } finally {
       setIsProcessing(false)
+    }
+  }
+
+  const handleOpenWorkspace = async (project: any) => {
+    if (!user) return
+
+    const existingTeamId = project.teams?.[0]?.id
+    if (existingTeamId) {
+      router.push(`/team/${existingTeamId}`)
+      return
+    }
+
+    setOpeningWorkspaceId(project.id)
+    try {
+      const { data: existingTeam } = await supabase
+        .from("teams")
+        .select("id")
+        .eq("project_id", project.id)
+        .maybeSingle()
+
+      let team = existingTeam
+
+      if (!team) {
+        const { data: newTeam, error: teamError } = await supabase
+          .from("teams")
+          .insert({
+            project_id: project.id,
+            name: `${project.title} Workspace`,
+            created_by: user.id,
+          })
+          .select("id")
+          .single()
+
+        if (teamError) throw teamError
+        team = newTeam
+      }
+
+      if (!team?.id) throw new Error("Could not open workspace")
+
+      const { data: defaultChannel } = await supabase
+        .from("channels")
+        .select("id")
+        .eq("team_id", team.id)
+        .eq("name", "general")
+        .maybeSingle()
+
+      if (!defaultChannel) {
+        await supabase
+          .from("channels")
+          .insert({
+            team_id: team.id,
+            name: "general",
+            description: "Start here. Chat, plan, and @igni when you need help.",
+            is_default: true,
+            type: "text",
+            created_by: user.id,
+          })
+      }
+
+      mutate(`project-teams-${user.id}`)
+      router.push(`/team/${team.id}`)
+    } catch (error) {
+      console.error("Error opening workspace:", error)
+    } finally {
+      setOpeningWorkspaceId(null)
     }
   }
 
@@ -549,11 +637,16 @@ export default function TeamsPage() {
                           <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{project.description}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                          {project.teams?.[0]?.id && (
-                            <Button asChild size="sm">
-                              <Link href={`/team/${project.teams[0].id}`}>Open Workspace</Link>
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            onClick={() => handleOpenWorkspace(project)}
+                            disabled={openingWorkspaceId === project.id}
+                          >
+                            {openingWorkspaceId === project.id ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : null}
+                            Open Workspace
+                          </Button>
                           <Button asChild size="sm" variant="outline">
                             <Link href={`/project/${project.id}`}>
                               View
@@ -575,7 +668,7 @@ export default function TeamsPage() {
                           <p className="mt-1 text-sm text-foreground">
                             {project.teams?.[0]?.team_members?.length > 0
                               ? "Open the workspace and decide the first concrete step."
-                              : "Review interest or share this Spark with someone who might be down."}
+                              : "Open the workspace, ask Igni, and keep shaping the idea while you find people."}
                           </p>
                         </div>
                       </div>

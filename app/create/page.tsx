@@ -139,7 +139,40 @@ function CreateIntentContent() {
         .single()
 
       if (error) throw error
-      router.push(`/project/${data.id}`)
+
+      const { data: team, error: teamError } = await supabase
+        .from("teams")
+        .insert({
+          project_id: data.id,
+          name: `${intent.title} Workspace`,
+          created_by: user.id,
+        })
+        .select("id")
+        .single()
+
+      if (teamError) throw teamError
+
+      const { data: defaultChannel } = await supabase
+        .from("channels")
+        .select("id")
+        .eq("team_id", team.id)
+        .eq("name", "general")
+        .maybeSingle()
+
+      if (!defaultChannel) {
+        await supabase
+          .from("channels")
+          .insert({
+            team_id: team.id,
+            name: "general",
+            description: "Start here. Chat, plan, and @igni when you need help.",
+            is_default: true,
+            type: "text",
+            created_by: user.id,
+          })
+      }
+
+      router.push(`/team/${team.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to publish Spark")
     } finally {

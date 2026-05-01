@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { formatDistanceToNow } from "date-fns"
 import useSWR, { mutate } from "swr"
-import { ArrowLeft, Calendar, Loader2, MapPin, MessageCircle, Send, Trash2, UserRound } from "lucide-react"
+import { ArrowLeft, Calendar, Loader2, MapPin, MessageCircle, MessageSquare, Send, Trash2, UserRound } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -57,6 +57,7 @@ export default function SparkDetailPage() {
   const [message, setMessage] = useState("")
   const [isSendingInterest, setIsSendingInterest] = useState(false)
   const [isDeletingSpark, setIsDeletingSpark] = useState(false)
+  const [isOpeningWorkspace, setIsOpeningWorkspace] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -118,6 +119,18 @@ export default function SparkDetailPage() {
     }
   )
 
+  const { data: projectTeam, mutate: mutateProjectTeam } = useSWR(
+    isOwner && id ? ["project-team", id] : null,
+    async () => {
+      const { data } = await supabase
+        .from("teams")
+        .select("id")
+        .eq("project_id", id)
+        .maybeSingle()
+      return data
+    }
+  )
+
   const handleInterest = async () => {
     if (!user || !id) {
       router.push(`/auth/login?redirect=/project/${id}`)
@@ -166,6 +179,61 @@ export default function SparkDetailPage() {
       setErrorMessage(error instanceof Error ? error.message : "Could not delete Spark")
     } finally {
       setIsDeletingSpark(false)
+    }
+  }
+
+  const handleOpenWorkspace = async () => {
+    if (!user || !id || !intent || !isOwner) return
+
+    setIsOpeningWorkspace(true)
+    setErrorMessage(null)
+
+    try {
+      let team = projectTeam
+
+      if (!team) {
+        const { data: newTeam, error: teamError } = await supabase
+          .from("teams")
+          .insert({
+            project_id: id,
+            name: `${title} Workspace`,
+            created_by: user.id,
+          })
+          .select("id")
+          .single()
+
+        if (teamError) throw teamError
+        team = newTeam
+      }
+
+      if (!team?.id) throw new Error("Could not open workspace")
+
+      const { data: defaultChannel } = await supabase
+        .from("channels")
+        .select("id")
+        .eq("team_id", team.id)
+        .eq("name", "general")
+        .maybeSingle()
+
+      if (!defaultChannel) {
+        await supabase
+          .from("channels")
+          .insert({
+            team_id: team.id,
+            name: "general",
+            description: "Start here. Chat, plan, and @igni when you need help.",
+            is_default: true,
+            type: "text",
+            created_by: user.id,
+          })
+      }
+
+      mutateProjectTeam()
+      router.push(`/team/${team.id}`)
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Could not open workspace")
+    } finally {
+      setIsOpeningWorkspace(false)
     }
   }
 
@@ -284,6 +352,18 @@ export default function SparkDetailPage() {
                     </div>
                     <Button asChild className="w-full" variant="outline">
                       <Link href="/teams?view=applications">Review interests</Link>
+                    </Button>
+                    <Button
+                      className="w-full"
+                      onClick={handleOpenWorkspace}
+                      disabled={isOpeningWorkspace}
+                    >
+                      {isOpeningWorkspace ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                      )}
+                      Open Workspace
                     </Button>
                     <Button
                       className="w-full"
