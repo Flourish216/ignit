@@ -88,8 +88,15 @@ const formatDate = (value: string) =>
   }).format(new Date(value))
 
 const getNoteErrorMessage = (error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error || "")
-  if (message.includes("public.notes") || message.includes("schema cache")) {
+  const errorObject = error && typeof error === "object" ? error as Record<string, unknown> : null
+  const message = [
+    error instanceof Error ? error.message : null,
+    typeof errorObject?.message === "string" ? errorObject.message : null,
+    typeof errorObject?.code === "string" ? errorObject.code : null,
+    typeof errorObject?.details === "string" ? errorObject.details : null,
+  ].filter(Boolean).join(" ")
+
+  if (message.includes("public.notes") || message.includes("schema cache") || message.includes("PGRST205")) {
     return "Notes storage is not ready yet. Run scripts/create-notes-table.sql in Supabase."
   }
   return message || "Could not save note."
