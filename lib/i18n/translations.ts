@@ -2,7 +2,7 @@ export type Language = 'en' | 'zh'
 
 export const translations = {
   en: {
-    nav: { home: 'Home', explore: 'Browse', teams: 'My Sparks', notes: 'Notes', newProject: 'New Spark', quickNote: 'Quick note', signIn: 'Sign In', getStarted: 'Get Started', profile: 'Profile', myTeams: 'My Sparks', messages: 'Messages', searchProjects: 'Search Sparks...', signOut: 'Sign Out' },
+    nav: { home: 'Home', explore: 'Browse', teams: 'My Sparks', workspace: 'Workspace', notes: 'Notes', newProject: 'New Spark', quickNote: 'Quick note', signIn: 'Sign In', getStarted: 'Get Started', profile: 'Profile', myTeams: 'My Sparks', messages: 'Workspace', searchProjects: 'Search Sparks...', signOut: 'Sign Out' },
     hero: { badge: 'Find a buddy to start with', title: 'Don’t start alone.', titleHighlight: '', description: 'Tell Ignit what you want to do. Find someone who wants to do it too.' },
     features: { title: 'How it works', subtitle: 'From a rough Spark to a real start', shareIdea: { title: 'Say the thing', description: 'Write what you want to start in plain language.' }, aiBreakdown: { title: 'Make it clear', description: 'Ignit turns it into a simple Spark Card.' }, findTeam: { title: 'Find someone', description: 'People can browse and respond.' }, buildTogether: { title: 'Start small', description: 'Chat and decide the first step.' } },
     cta: { title: 'Have something in mind?', subtitle: 'Post it as a Spark and see who is interested.', exploreProjects: 'Browse Sparks', createAccount: 'Create Account' },
@@ -77,7 +77,7 @@ export const translations = {
     language: 'Language',
   },
   zh: {
-    nav: { home: '首页', explore: '浏览', teams: '我的 Spark', notes: '灵感', newProject: '新建 Spark', quickNote: '快速记录', signIn: '登录', getStarted: '开始使用', profile: 'Profile', myTeams: '我的 Spark', messages: '消息', searchProjects: '搜索 Spark...', signOut: '退出登录' },
+    nav: { home: '首页', explore: '浏览', teams: '我的 Spark', workspace: 'Workspace', notes: '灵感', newProject: '新建 Spark', quickNote: '快速记录', signIn: '登录', getStarted: '开始使用', profile: 'Profile', myTeams: '我的 Spark', messages: 'Workspace', searchProjects: '搜索 Spark...', signOut: '退出登录' },
     hero: { badge: '找一个一起开始的人', title: 'Don’t start alone.', titleHighlight: '', description: 'Tell Ignit what you want to do. Find someone who wants to do it too.' },
     features: { title: '工作原理', subtitle: '从一句 Spark 到真的开始', shareIdea: { title: '说出想做的事', description: '用简单的话写下来。' }, aiBreakdown: { title: '整理清楚', description: 'Ignit 把它变成一张简单 Spark Card。' }, findTeam: { title: '找到一个人', description: '别人可以浏览并回应。' }, buildTogether: { title: '小步开始', description: '聊一下，然后确定第一步。' } },
     cta: { title: '已经有想做的事了吗？', subtitle: '把它发布成 Spark，看看谁也感兴趣。', exploreProjects: '浏览 Spark', createAccount: '创建账户' },

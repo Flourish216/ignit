@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Compass, Home, LogOut, Mail, NotebookPen, Plus, Search, Sparkles, User, Users } from "lucide-react"
+import { Compass, Home, LogOut, MessageSquare, NotebookPen, Plus, Search, Sparkles, User, Users } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
@@ -29,6 +29,7 @@ export function Navigation() {
     { href: "/", label: t.nav.home, icon: Home },
     { href: "/explore", label: t.nav.explore, icon: Compass },
     { href: "/teams", label: t.nav.teams, icon: Users },
+    { href: "/workspace", label: t.nav.workspace, icon: MessageSquare },
     { href: "/notes", label: t.nav.notes, icon: NotebookPen },
   ]
 
@@ -128,8 +129,8 @@ export function Navigation() {
     <Tooltip>
       <TooltipTrigger asChild>
         <Button variant="ghost" size="icon" className="h-9 w-9" asChild>
-          <Link href={user ? "/teams" : "/auth/login?redirect=/teams"} aria-label={t.nav.messages}>
-            <Mail className="h-4 w-4" />
+          <Link href={user ? "/workspace" : "/auth/login?redirect=/workspace"} aria-label={t.nav.messages}>
+            <MessageSquare className="h-4 w-4" />
           </Link>
         </Button>
       </TooltipTrigger>
