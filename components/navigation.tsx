@@ -9,13 +9,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Compass, Home, LogOut, Mail, Plus, Search, Sparkles, User, Users } from "lucide-react"
+import { Compass, Home, LogOut, Mail, NotebookPen, Plus, Search, Sparkles, User, Users } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { useLanguage } from "@/lib/i18n/context"
 import { LanguageSwitcher } from "@/components/language-switcher"
+import { QuickNoteDialog } from "@/components/quick-note-dialog"
 
 export function Navigation() {
   const pathname = usePathname()
@@ -28,6 +29,7 @@ export function Navigation() {
     { href: "/", label: t.nav.home, icon: Home },
     { href: "/explore", label: t.nav.explore, icon: Compass },
     { href: "/teams", label: t.nav.teams, icon: Users },
+    { href: "/notes", label: t.nav.notes, icon: NotebookPen },
   ]
 
   const { data: user } = useSWR("user", async () => {
@@ -154,6 +156,7 @@ export function Navigation() {
               {t.nav.newProject}
             </Link>
           </Button>
+          {user && <QuickNoteDialog label={t.nav.quickNote} />}
 
           <nav className="space-y-1">
             {navItems.map((item) => {
@@ -207,6 +210,7 @@ export function Navigation() {
 
         <TooltipProvider>
           <div className="flex items-center gap-2">
+            {user && <QuickNoteDialog compact label={t.nav.quickNote} />}
             <MessageButton />
             <LanguageSwitcher />
             {user ? (
@@ -241,6 +245,7 @@ export function Navigation() {
                   <Search className="h-4 w-4" />
                 </Link>
               </Button>
+              {user && <QuickNoteDialog compact label={t.nav.quickNote} />}
               <MessageButton compact />
             </TooltipProvider>
             <LanguageSwitcher />
