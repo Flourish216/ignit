@@ -315,9 +315,10 @@ export default function TeamWorkspacePage() {
   }, [router, teamId, user])
 
   const isOwner = Boolean(user?.id && team?.project?.owner_id === user.id)
-  const isWorkspaceMember = Boolean(
-    user?.id && (isOwner || members?.some((member) => member.user_id === user.id)),
-  )
+  const hasAcceptedMembership = Boolean(user?.id && members?.some((member) => member.user_id === user.id))
+  const isMembershipChecking = Boolean(user?.id && team && !isOwner && members === undefined)
+  const isWorkspaceMember = Boolean(user?.id && team && (isOwner || hasAcceptedMembership))
+  const canSendMessage = Boolean(user?.id && projectId && team && (isWorkspaceMember || isMembershipChecking))
   const details = (team?.project?.ai_breakdown || {}) as SparkBreakdown
   const sparkTitle = details.title || team?.project?.title || team?.name || "Spark"
   const sparkDescription = details.description || team?.project?.description || "No brief yet."
@@ -392,7 +393,7 @@ export default function TeamWorkspacePage() {
   }, [isOwner, isRepairingWorkspace, mutateMembers, supabase, team, teamId, user])
 
   const handleAskIgni = async (question: string, mode: IgniMode = igniMode) => {
-    if (!question.trim() || !projectId || !user || !isWorkspaceMember) return
+    if (!question.trim() || !projectId || !user || !canSendMessage) return
 
     setIsAskingIgni(true)
     setIgniError(null)
@@ -443,7 +444,7 @@ export default function TeamWorkspacePage() {
 
   const handleSendMessage = async (event?: FormEvent) => {
     event?.preventDefault()
-    if (!messageInput.trim() || !projectId || !user || !isWorkspaceMember) return
+    if (!messageInput.trim() || !projectId || !user || !canSendMessage) return
 
     const content = messageInput.trim()
     const shouldAskIgni = isIgniPrompt(content)
@@ -521,9 +522,9 @@ export default function TeamWorkspacePage() {
     <div className="min-h-screen bg-background lg:pl-64">
       <Navigation />
 
-      <main className="mx-auto flex h-[calc(100vh-4rem)] max-w-[1600px] flex-col px-3 py-3 sm:px-4 lg:px-5">
-        <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
-          <aside className="flex min-h-0 flex-col gap-3">
+      <main className="mx-auto flex h-[calc(100svh-4rem)] max-w-[1600px] flex-col px-2 py-2 sm:px-4 sm:py-3 lg:h-[calc(100vh-4rem)] lg:px-5">
+        <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[260px_minmax(0,1fr)]">
+          <aside className="hidden min-h-0 flex-col gap-3 lg:flex">
             <section className="rounded-lg border border-border bg-card p-4">
               <Link
                 href="/teams"
@@ -561,23 +562,6 @@ export default function TeamWorkspacePage() {
               </Button>
             </section>
 
-            <section className="min-h-0 flex-1 rounded-lg border border-border bg-card p-3">
-              <div className="mb-2 flex items-center justify-between px-1">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Chat</p>
-              </div>
-
-              <div className="space-y-1 overflow-y-auto">
-                <button
-                  type="button"
-                  className="flex w-full items-center gap-2 rounded-md bg-primary px-3 py-2 text-left text-sm text-primary-foreground"
-                >
-                  <Hash className="h-4 w-4 shrink-0" />
-                  <span className="truncate">general</span>
-                  <span className="ml-auto rounded-full bg-background/20 px-1.5 py-0.5 text-[10px]">main</span>
-                </button>
-              </div>
-            </section>
-
             <section className="rounded-lg border border-primary/20 bg-primary/5 p-4">
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <ClipboardList className="h-4 w-4 text-primary" />
@@ -608,7 +592,7 @@ export default function TeamWorkspacePage() {
           </aside>
 
           <section className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card">
-            <div className="flex min-h-16 items-center justify-between gap-3 border-b border-border px-4 py-3">
+            <div className="flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-border px-3 py-3 sm:px-4">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Hash className="h-4 w-4" />
@@ -623,13 +607,105 @@ export default function TeamWorkspacePage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center justify-end gap-2">
                 {isAskingIgni && (
                   <Badge variant="secondary" className="hidden gap-1 sm:inline-flex">
                     <Loader2 className="h-3 w-3 animate-spin" />
                     Igni thinking
                   </Badge>
                 )}
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      Brief
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent className="overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle>Spark brief</SheetTitle>
+                      <SheetDescription>The context this workspace is starting from.</SheetDescription>
+                    </SheetHeader>
+                    <div className="space-y-4 px-4">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="secondary" className="gap-1">
+                            <Sparkles className="h-3.5 w-3.5" />
+                            Workspace
+                          </Badge>
+                          <Badge variant="outline" className="capitalize">{sparkStatus}</Badge>
+                          {details.category && <Badge>{details.category}</Badge>}
+                        </div>
+                        <h3 className="mt-3 text-lg font-semibold text-foreground">{sparkTitle}</h3>
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">{sparkDescription}</p>
+                      </div>
+
+                      <div className="grid gap-2 text-sm">
+                        <div className="rounded-md bg-secondary/60 p-3">
+                          <span className="font-medium text-foreground">Looking for: </span>
+                          <span className="text-muted-foreground">{details.looking_for || "Someone interested"}</span>
+                        </div>
+                        <div className="rounded-md bg-secondary/60 p-3">
+                          <span className="font-medium text-foreground">Time: </span>
+                          <span className="text-muted-foreground">{details.time_availability || "Flexible"}</span>
+                        </div>
+                        {details.location && (
+                          <div className="rounded-md bg-secondary/60 p-3">
+                            <span className="font-medium text-foreground">Location: </span>
+                            <span className="text-muted-foreground">{details.location}</span>
+                          </div>
+                        )}
+                        {details.vibe && (
+                          <div className="rounded-md bg-secondary/60 p-3">
+                            <span className="font-medium text-foreground">Vibe: </span>
+                            <span className="text-muted-foreground">{details.vibe}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <Button asChild variant="outline" className="w-full">
+                        <Link href={`/project/${team.project_id}`}>View Spark Card</Link>
+                      </Button>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <ClipboardList className="h-4 w-4" />
+                      Start
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent className="overflow-y-auto">
+                    <SheetHeader>
+                      <SheetTitle>Start panel</SheetTitle>
+                      <SheetDescription>Keep the next move small enough to actually do.</SheetDescription>
+                    </SheetHeader>
+                    <div className="space-y-4 px-4">
+                      <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                        <p className="text-sm leading-6 text-foreground">{firstMove}</p>
+                        <div className="mt-3 space-y-2">
+                          {startSteps.map((step) => (
+                            <div key={step} className="flex gap-2 rounded-md bg-background/80 p-2 text-xs leading-5 text-foreground">
+                              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                              <span>{step}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        className="w-full"
+                        onClick={() => {
+                          setIgniMode("plan")
+                          setMessageInput("@igni Turn our Spark brief into the next 3 concrete steps. Keep it short and assign what to decide first.")
+                        }}
+                      >
+                        Ask Igni for next steps
+                      </Button>
+                    </div>
+                  </SheetContent>
+                </Sheet>
                 <Sheet>
                   <SheetTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2">
@@ -691,8 +767,14 @@ export default function TeamWorkspacePage() {
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
-              {!isWorkspaceMember && (
+            <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-5">
+              {isMembershipChecking && (
+                <div className="mb-4 rounded-lg border border-dashed border-border bg-secondary/40 p-4 text-center">
+                  <p className="text-sm text-muted-foreground">Checking workspace access...</p>
+                </div>
+              )}
+
+              {!isMembershipChecking && !isWorkspaceMember && (
                 <div className="mb-4 rounded-lg border border-dashed border-border bg-secondary/40 p-4 text-center">
                   <p className="text-sm text-muted-foreground">This workspace opens after a Spark becomes a Match.</p>
                 </div>
@@ -777,8 +859,8 @@ export default function TeamWorkspacePage() {
               )}
             </div>
 
-            <form onSubmit={handleSendMessage} className="border-t border-border p-3">
-              <div className="mb-2 flex flex-wrap items-center gap-1.5">
+            <form onSubmit={handleSendMessage} className="border-t border-border p-2.5 sm:p-3">
+              <div className="-mx-1 mb-2 flex items-center gap-1.5 overflow-x-auto px-1 pb-1">
                 {igniModes.map((mode) => {
                   const Icon = mode.icon
                   const active = igniMode === mode.id
@@ -787,7 +869,7 @@ export default function TeamWorkspacePage() {
                       key={mode.id}
                       type="button"
                       onClick={() => setIgniMode(mode.id)}
-                      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors ${
                         active
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground"
@@ -798,10 +880,10 @@ export default function TeamWorkspacePage() {
                     </button>
                   )
                 })}
-                <span className="hidden text-xs text-muted-foreground sm:inline">Type @igni to use the selected mode.</span>
+                <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">Type @igni to use the selected mode.</span>
               </div>
 
-              <div className="mb-2 flex flex-wrap gap-1.5">
+              <div className="mb-2 hidden flex-wrap gap-1.5 sm:flex">
                 {igniPrompts.map((prompt) => (
                   <button
                     key={prompt.label}
@@ -810,7 +892,7 @@ export default function TeamWorkspacePage() {
                       setIgniMode(prompt.mode)
                       setMessageInput(prompt.prompt)
                     }}
-                    disabled={!isWorkspaceMember || isAskingIgni}
+                    disabled={!canSendMessage || isAskingIgni}
                     className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {prompt.label}
@@ -838,17 +920,19 @@ export default function TeamWorkspacePage() {
                   value={messageInput}
                   onChange={(event) => setMessageInput(event.target.value)}
                   placeholder={
-                    isWorkspaceMember && projectId
+                    canSendMessage
                       ? "Message #general or @igni plan our next step"
-                      : "Workspace chat opens after a Match"
+                      : isMembershipChecking
+                        ? "Checking workspace access..."
+                        : "Workspace chat opens after a Match"
                   }
-                  disabled={!isWorkspaceMember || !projectId || isSending}
+                  disabled={!canSendMessage || isSending}
                   className="h-10 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
                 />
                 <Button
                   type="submit"
                   size="icon"
-                  disabled={!messageInput.trim() || !isWorkspaceMember || !projectId || isSending || isAskingIgni}
+                  disabled={!messageInput.trim() || !canSendMessage || isSending || isAskingIgni}
                   aria-label="Send message"
                 >
                   {isSending || isAskingIgni ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
