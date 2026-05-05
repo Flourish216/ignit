@@ -34,6 +34,25 @@ const intentFields: Array<{ key: keyof IntentBreakdown; label: string }> = [
   { key: "commitment", label: "Commitment" },
 ]
 
+const getPublishErrorMessage = (error: unknown) => {
+  if (error instanceof Error && error.message) return error.message
+  if (error && typeof error === "object") {
+    const errorObject = error as Record<string, unknown>
+    return [
+      typeof errorObject.message === "string" ? errorObject.message : null,
+      typeof errorObject.details === "string" ? errorObject.details : null,
+      typeof errorObject.hint === "string" ? errorObject.hint : null,
+      typeof errorObject.code === "string" ? errorObject.code : null,
+    ].filter(Boolean).join(" ")
+  }
+  return "Failed to publish Spark"
+}
+
+const shouldRetryTeamWithoutCreatedBy = (error: unknown) => {
+  const message = getPublishErrorMessage(error).toLowerCase()
+  return message.includes("created_by") || message.includes("schema cache") || message.includes("pgrst204")
+}
+
 function CreateIntentContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -140,7 +159,7 @@ function CreateIntentContent() {
 
       if (error) throw error
 
-      const { data: team, error: teamError } = await supabase
+      let { data: team, error: teamError } = await supabase
         .from("teams")
         .insert({
           project_id: data.id,
@@ -150,7 +169,22 @@ function CreateIntentContent() {
         .select("id")
         .single()
 
+      if (teamError && shouldRetryTeamWithoutCreatedBy(teamError)) {
+        const fallback = await supabase
+          .from("teams")
+          .insert({
+            project_id: data.id,
+            name: `${intent.title} Workspace`,
+          })
+          .select("id")
+          .single()
+
+        team = fallback.data
+        teamError = fallback.error
+      }
+
       if (teamError) throw teamError
+      if (!team?.id) throw new Error("Spark was created, but workspace could not be opened.")
 
       await supabase
         .from("team_members")
@@ -166,7 +200,8 @@ function CreateIntentContent() {
 
       router.push(`/team/${team.id}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to publish Spark")
+      console.error("Failed to publish Spark:", err)
+      setError(getPublishErrorMessage(err))
     } finally {
       setIsPublishing(false)
     }
