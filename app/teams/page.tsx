@@ -439,23 +439,35 @@ export default function TeamsPage() {
         // Add member to team
         await supabase
           .from("team_members")
-          .insert({
+          .upsert(
+            {
             team_id: team?.id,
             user_id: application.user_id,
             role: application.role_applied,
             status: "accepted",
-          })
+            },
+            { onConflict: "team_id,user_id" },
+          )
 
         await supabase
           .from("projects")
           .update({ status: "in_progress" })
           .eq("id", application.project_id)
           .eq("status", "recruiting")
+
+        if (team?.id) {
+          await supabase.from("messages").insert({
+            project_id: application.project_id,
+            user_id: user.id,
+            content: `Match started: ${application.user?.full_name || "Someone"} joined this Spark. Say hi and decide the first tiny step.`,
+          })
+        }
       }
 
       // Refresh data
       mutate(`pending-applications-${user.id}`)
       mutate(`owned-projects-${user.id}`)
+      mutate(`project-teams-${user.id}`)
       setSelectedApplication(null)
     } catch (error) {
       console.error("Error processing application:", error)

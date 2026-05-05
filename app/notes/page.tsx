@@ -1,9 +1,10 @@
 "use client"
 
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { formatDistanceToNow } from "date-fns"
-import { Loader2, Mic, NotebookPen, Sparkles, Trash2, Type } from "lucide-react"
+import { Loader2, Mic, NotebookPen, Sparkles, Trash2, Type, Wand2 } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { QuickNoteDialog } from "@/components/quick-note-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -19,6 +20,17 @@ type Note = {
   converted_project_id: string | null
   created_at: string
   updated_at: string
+}
+
+type ShapedNote = {
+  noteId: string
+  result: {
+    title?: string
+    category?: string
+    description?: string
+    looking_for?: string
+    time_availability?: string
+  }
 }
 
 const getNoteErrorMessage = (error: unknown) => {
@@ -39,6 +51,9 @@ const getNoteErrorMessage = (error: unknown) => {
 export default function NotesPage() {
   const router = useRouter()
   const supabase = createClient()
+  const [shapingNoteId, setShapingNoteId] = useState<string | null>(null)
+  const [shapedNote, setShapedNote] = useState<ShapedNote | null>(null)
+  const [shapeError, setShapeError] = useState<string | null>(null)
 
   const { data: user, isLoading: userLoading } = useSWR("user", async () => {
     const {
@@ -75,6 +90,28 @@ export default function NotesPage() {
 
   const handleTurnIntoSpark = (content: string) => {
     router.push(`/create?idea=${encodeURIComponent(content)}`)
+  }
+
+  const handleShapeNote = async (note: Note) => {
+    setShapingNoteId(note.id)
+    setShapedNote(null)
+    setShapeError(null)
+
+    try {
+      const response = await fetch("/api/ai/breakdown", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idea: note.content }),
+      })
+
+      if (!response.ok) throw new Error(await response.text())
+      const data = await response.json()
+      setShapedNote({ noteId: note.id, result: data.result || {} })
+    } catch (error) {
+      setShapeError(error instanceof Error ? error.message : "Could not shape note.")
+    } finally {
+      setShapingNoteId(null)
+    }
   }
 
   if (userLoading || user === undefined) {
@@ -120,6 +157,14 @@ export default function NotesPage() {
           </Card>
         )}
 
+        {shapeError && (
+          <Card className="mb-4 border-destructive/30 bg-destructive/5">
+            <CardContent className="py-4">
+              <p className="text-sm text-destructive">{shapeError}</p>
+            </CardContent>
+          </Card>
+        )}
+
         {isLoading && !notes && (
           <div className="flex min-h-[300px] items-center justify-center">
             <Loader2 className="h-7 w-7 animate-spin text-primary" />
@@ -148,7 +193,22 @@ export default function NotesPage() {
                           {note.content}
                         </p>
                       </div>
-                      <div className="flex shrink-0 gap-2">
+                      <div className="flex shrink-0 flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() => handleShapeNote(note)}
+                          disabled={shapingNoteId === note.id}
+                        >
+                          {shapingNoteId === note.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Wand2 className="h-4 w-4" />
+                          )}
+                          Shape
+                        </Button>
                         <Button
                           type="button"
                           size="sm"
@@ -170,6 +230,28 @@ export default function NotesPage() {
                         </Button>
                       </div>
                     </div>
+                    {shapedNote?.noteId === note.id && (
+                      <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-4">
+                        <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                          <Sparkles className="h-4 w-4" />
+                          Igni shaped this note
+                        </div>
+                        <p className="mt-3 text-base font-semibold text-foreground">
+                          {shapedNote.result.title || "Untitled Spark"}
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                          {shapedNote.result.description || note.content}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {shapedNote.result.category && <Badge variant="secondary">{shapedNote.result.category}</Badge>}
+                          {shapedNote.result.looking_for && <Badge variant="outline">{shapedNote.result.looking_for}</Badge>}
+                          {shapedNote.result.time_availability && <Badge variant="outline">{shapedNote.result.time_availability}</Badge>}
+                        </div>
+                        <Button className="mt-4" size="sm" onClick={() => handleTurnIntoSpark(note.content)}>
+                          Create Spark from this
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )

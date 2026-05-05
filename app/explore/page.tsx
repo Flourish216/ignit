@@ -20,6 +20,82 @@ const statusFilters = [
 
 const categories = ["Build", "Learn", "Move", "Go", "Create"]
 
+const goalsPrefix = "profile:goals:"
+const availabilityPrefix = "profile:availability:"
+
+function readStoredValue(value: unknown, prefix: string) {
+  if (!Array.isArray(value)) return ""
+  const item = value.find((entry) => typeof entry === "string" && entry.startsWith(prefix))
+  return typeof item === "string" ? item.slice(prefix.length) : ""
+}
+
+function tokenize(value: unknown) {
+  if (!value) return []
+  const text = Array.isArray(value) ? value.join(" ") : String(value)
+  return text
+    .toLowerCase()
+    .split(/[^a-z0-9\u4e00-\u9fa5]+/i)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 1)
+}
+
+function getFitForProfile(intent: any, profile: any) {
+  if (!profile) return { score: 0, reasons: [] as string[] }
+
+  const details = intent.ai_breakdown || {}
+  const profileGoals = profile.current_goals || readStoredValue(profile.interests, goalsPrefix)
+  const profileAvailability = profile.availability || readStoredValue(profile.skills, availabilityPrefix)
+  const profileWords = new Set(tokenize([
+    profile.bio,
+    profile.location,
+    profileGoals,
+    profileAvailability,
+    profile.skills,
+    profile.interests,
+  ]))
+  const sparkWords = tokenize([
+    details.title || intent.title,
+    details.description || intent.description,
+    details.category,
+    details.location,
+    details.time_availability,
+    details.looking_for,
+    details.vibe,
+    details.commitment,
+  ])
+
+  const overlap = sparkWords.filter((word) => profileWords.has(word))
+  const reasons: string[] = []
+  let score = 0
+
+  if (details.category && profileWords.has(String(details.category).toLowerCase())) {
+    score += 3
+    reasons.push(`interested in ${details.category}`)
+  }
+
+  if (overlap.length > 0) {
+    score += Math.min(4, overlap.length)
+    reasons.push(`shares ${overlap.slice(0, 3).join(", ")}`)
+  }
+
+  if (details.location && profile.location && String(details.location).toLowerCase().includes(String(profile.location).toLowerCase())) {
+    score += 2
+    reasons.push("near your location")
+  }
+
+  if (details.time_availability && profileAvailability) {
+    score += 1
+    reasons.push("availability may line up")
+  }
+
+  if (profileGoals && sparkWords.some((word) => tokenize(profileGoals).includes(word))) {
+    score += 2
+    reasons.push("matches what you want to start")
+  }
+
+  return { score, reasons: Array.from(new Set(reasons)).slice(0, 3) }
+}
+
 function ExploreContent() {
   const searchParams = useSearchParams()
   const urlSearchQuery = searchParams.get("search") || ""
@@ -55,6 +131,25 @@ function ExploreContent() {
     { revalidateOnFocus: false }
   )
 
+  const { data: user } = useSWR("user", async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    return user ?? null
+  })
+
+  const { data: currentProfile } = useSWR(
+    user ? `explore-profile-${user.id}` : null,
+    async () => {
+      if (!user) return null
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, bio, skills, interests, location, current_goals, availability")
+        .eq("id", user.id)
+        .maybeSingle()
+      return data
+    },
+    { revalidateOnFocus: false },
+  )
+
   const { data: ownerProfiles } = useSWR(
     intents ? ["intent-owners", intents.map((intent) => intent.owner_id)] : null,
     async () => {
@@ -70,16 +165,23 @@ function ExploreContent() {
     }
   )
 
-  const intentsWithOwners = intents?.map((intent) => ({
-    ...intent,
-    owner: ownerProfiles?.[intent.owner_id] || null,
-  }))
-
-  const filteredIntents = intentsWithOwners?.filter((intent) => {
-    if (selectedCategories.length === 0) return true
-    const category = intent.ai_breakdown?.category || intent.tags?.[0] || "Other"
-    return selectedCategories.includes(category)
+  const intentsWithOwners = intents?.map((intent) => {
+    const fit = getFitForProfile(intent, currentProfile)
+    return {
+      ...intent,
+      owner: ownerProfiles?.[intent.owner_id] || null,
+      fitScore: fit.score,
+      fitReasons: fit.reasons,
+    }
   })
+
+  const filteredIntents = intentsWithOwners
+    ?.filter((intent) => {
+      if (selectedCategories.length === 0) return true
+      const category = intent.ai_breakdown?.category || intent.tags?.[0] || "Other"
+      return selectedCategories.includes(category)
+    })
+    .sort((a, b) => (b.fitScore || 0) - (a.fitScore || 0))
 
   const toggleCategory = (category: string) => {
     setSelectedCategories((prev) =>

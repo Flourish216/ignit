@@ -32,6 +32,8 @@ interface SparkCardProps {
       full_name: string | null
       avatar_url: string | null
     } | null
+    fitReasons?: string[]
+    fitScore?: number
   }
 }
 
@@ -57,6 +59,9 @@ export function SparkCard({ spark }: SparkCardProps) {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="secondary">{details.category || "Other"}</Badge>
                 <Badge variant="outline" className="capitalize">{status}</Badge>
+                {Boolean(spark.fitReasons?.length) && (
+                  <Badge className="bg-primary/10 text-primary hover:bg-primary/15">Good fit</Badge>
+                )}
               </div>
               <h3 className="mt-3 line-clamp-2 text-base font-semibold text-foreground group-hover:text-primary">
                 {title}
@@ -89,6 +94,15 @@ export function SparkCard({ spark }: SparkCardProps) {
               {details.commitment && (
                 <Badge variant="outline" className="text-xs font-normal">{details.commitment}</Badge>
               )}
+            </div>
+          )}
+
+          {Boolean(spark.fitReasons?.length) && (
+            <div className="mt-4 rounded-md border border-primary/20 bg-primary/5 px-3 py-2">
+              <p className="text-xs font-medium text-primary">Why it fits</p>
+              <p className="mt-1 line-clamp-2 text-xs leading-5 text-foreground">
+                {spark.fitReasons?.slice(0, 2).join(" · ")}
+              </p>
             </div>
           )}
 

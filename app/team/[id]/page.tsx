@@ -8,6 +8,8 @@ import useSWR, { mutate } from "swr"
 import {
   ArrowLeft,
   Bot,
+  CheckCircle2,
+  ClipboardList,
   Hash,
   Lightbulb,
   Loader2,
@@ -328,6 +330,11 @@ export default function TeamWorkspacePage() {
     : details.looking_for
       ? `Start with the person you were looking for: ${details.looking_for}`
       : "Agree on the first small thing you can do together."
+  const startSteps = [
+    details.looking_for ? `Say what kind of ${details.looking_for} would help most.` : "Say what kind of person would help most.",
+    details.time_availability ? `Pick a first time window: ${details.time_availability}.` : "Pick one time window for the first conversation.",
+    "Decide one tiny action you can finish before the next check-in.",
+  ]
   const currentMember = visibleMembers.find((member) => member.user_id === user?.id)
   const currentUserProfile: Profile | null = user
     ? {
@@ -573,10 +580,30 @@ export default function TeamWorkspacePage() {
 
             <section className="rounded-lg border border-primary/20 bg-primary/5 p-4">
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <Sparkles className="h-4 w-4 text-primary" />
-                First move
+                <ClipboardList className="h-4 w-4 text-primary" />
+                Start panel
               </div>
               <p className="mt-2 text-sm leading-6 text-foreground">{firstMove}</p>
+              <div className="mt-3 space-y-2">
+                {startSteps.map((step) => (
+                  <div key={step} className="flex gap-2 rounded-md bg-background/70 p-2 text-xs leading-5 text-foreground">
+                    <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                    <span>{step}</span>
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="mt-3 w-full bg-background/80"
+                onClick={() => {
+                  setIgniMode("plan")
+                  setMessageInput("@igni Turn our Spark brief into the next 3 concrete steps. Keep it short and assign what to decide first.")
+                }}
+              >
+                Ask Igni for next steps
+              </Button>
             </section>
           </aside>
 

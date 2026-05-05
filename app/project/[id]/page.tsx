@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { formatDistanceToNow } from "date-fns"
 import useSWR, { mutate } from "swr"
-import { ArrowLeft, Calendar, Loader2, MapPin, MessageCircle, MessageSquare, Send, Trash2, UserRound } from "lucide-react"
+import { ArrowLeft, Calendar, CheckCircle2, Clock, Loader2, MapPin, MessageCircle, MessageSquare, Send, Trash2, UserRound, XCircle } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -101,12 +101,24 @@ export default function SparkDetailPage() {
         .select("*")
         .eq("project_id", id)
         .eq("user_id", user.id)
-        .single()
+        .maybeSingle()
       return data
     }
   )
 
   const isOwner = user?.id === intent?.owner_id
+
+  const { data: matchedTeam } = useSWR(
+    existingInterest?.status === "accepted" && id ? ["matched-team", id] : null,
+    async () => {
+      const { data } = await supabase
+        .from("teams")
+        .select("id")
+        .eq("project_id", id)
+        .maybeSingle()
+      return data
+    },
+  )
 
   const { data: interestCount } = useSWR(
     isOwner && id ? ["intent-interest-count", id] : null,
@@ -140,15 +152,19 @@ export default function SparkDetailPage() {
     setIsSendingInterest(true)
     setErrorMessage(null)
     try {
-      const { error } = await supabase.from("project_applications").insert({
-        project_id: id,
-        user_id: user.id,
-        role_applied: "Interested",
-        message: message.trim() || null,
-      })
+      const { data, error } = await supabase
+        .from("project_applications")
+        .insert({
+          project_id: id,
+          user_id: user.id,
+          role_applied: "Interested",
+          message: message.trim() || null,
+        })
+        .select("*")
+        .single()
 
       if (error) throw error
-      mutate(["intent-interest", id, user.id])
+      mutate(["intent-interest", id, user.id], data, { revalidate: false })
       setMessage("")
       setIsDialogOpen(false)
     } catch (error) {
@@ -373,9 +389,40 @@ export default function SparkDetailPage() {
                     {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
                   </div>
                 ) : existingInterest ? (
-                  <div className="rounded-lg bg-secondary p-3 text-center">
-                    <p className="text-sm font-medium">Interest sent</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Status: {existingInterest.status}</p>
+                  <div className="space-y-3">
+                    <div className="rounded-lg border border-border bg-secondary/60 p-3">
+                      <div className="flex items-center gap-2">
+                        {existingInterest.status === "accepted" ? (
+                          <CheckCircle2 className="h-4 w-4 text-primary" />
+                        ) : existingInterest.status === "declined" ? (
+                          <XCircle className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Clock className="h-4 w-4 text-primary" />
+                        )}
+                        <p className="text-sm font-medium">
+                          {existingInterest.status === "accepted"
+                            ? "Matched"
+                            : existingInterest.status === "declined"
+                              ? "Interest closed"
+                              : "Interest sent"}
+                        </p>
+                      </div>
+                      <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                        {existingInterest.status === "accepted"
+                          ? "You were accepted. Continue this Spark in the workspace."
+                          : existingInterest.status === "declined"
+                            ? "This response was declined."
+                            : "The owner can review your note and accept you into the workspace."}
+                      </p>
+                    </div>
+                    {existingInterest.status === "accepted" && matchedTeam?.id && (
+                      <Button asChild className="w-full">
+                        <Link href={`/team/${matchedTeam.id}`}>
+                          <MessageSquare className="mr-2 h-4 w-4" />
+                          Open Workspace
+                        </Link>
+                      </Button>
+                    )}
                   </div>
                 ) : user ? (
                   <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

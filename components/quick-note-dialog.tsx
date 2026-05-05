@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import useSWR, { mutate } from "swr"
-import { Lightbulb, Loader2, Mic, MicOff, NotebookPen, Plus, Sparkles, Trash2 } from "lucide-react"
+import { Lightbulb, Loader2, Mic, MicOff, NotebookPen, Plus, Sparkles, Trash2, Wand2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -30,6 +30,17 @@ type QuickNote = {
   converted_project_id: string | null
   created_at: string
   updated_at: string
+}
+
+type ShapedNote = {
+  noteId: string
+  result: {
+    title?: string
+    category?: string
+    description?: string
+    looking_for?: string
+    time_availability?: string
+  }
 }
 
 type QuickNoteDialogProps = {
@@ -114,6 +125,8 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
   const [isListening, setIsListening] = useState(false)
   const [source, setSource] = useState<NoteSource>("text")
   const [error, setError] = useState<string | null>(null)
+  const [shapingNoteId, setShapingNoteId] = useState<string | null>(null)
+  const [shapedNote, setShapedNote] = useState<ShapedNote | null>(null)
 
   const { data: user } = useSWR("user", async () => {
     const {
@@ -260,6 +273,28 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
     mutateNotes((current = []) => current.filter((note) => note.id !== noteId), false)
   }
 
+  const handleShapeNote = async (note: QuickNote) => {
+    setShapingNoteId(note.id)
+    setShapedNote(null)
+    setError(null)
+
+    try {
+      const response = await fetch("/api/ai/breakdown", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idea: note.content }),
+      })
+
+      if (!response.ok) throw new Error(await response.text())
+      const data = await response.json()
+      setShapedNote({ noteId: note.id, result: data.result || {} })
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Could not shape note.")
+    } finally {
+      setShapingNoteId(null)
+    }
+  }
+
   const handleTurnIntoSpark = (noteContent: string) => {
     setOpen(false)
     router.push(`/create?idea=${encodeURIComponent(noteContent)}`)
@@ -363,6 +398,21 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          onClick={() => handleShapeNote(note)}
+                          disabled={shapingNoteId === note.id}
+                          aria-label="Shape with Igni"
+                        >
+                          {shapingNoteId === note.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Wand2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() => handleTurnIntoSpark(note.content)}
                           aria-label="Turn into Spark"
                         >
@@ -380,6 +430,24 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
                         </Button>
                       </div>
                     </div>
+                    {shapedNote?.noteId === note.id && (
+                      <div className="mt-3 rounded-md border border-primary/20 bg-primary/5 p-3">
+                        <div className="flex items-center gap-2 text-xs font-medium text-primary">
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Igni shaped this
+                        </div>
+                        <p className="mt-2 text-sm font-medium text-foreground">
+                          {shapedNote.result.title || "Untitled Spark"}
+                        </p>
+                        <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                          {shapedNote.result.description || note.content}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {shapedNote.result.category && <Badge variant="secondary">{shapedNote.result.category}</Badge>}
+                          {shapedNote.result.looking_for && <Badge variant="outline">{shapedNote.result.looking_for}</Badge>}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
