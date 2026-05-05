@@ -108,9 +108,10 @@ type MessageRow = Omit<Message, "user"> & {
   user?: ProfileRelation
 }
 
-type IgniMode = "plan" | "brainstorm" | "research" | "recap"
+type IgniMode = "ask" | "plan" | "brainstorm" | "research" | "recap"
 
 const igniModes: Array<{ id: IgniMode; label: string; icon: typeof Wand2 }> = [
+  { id: "ask", label: "Ask", icon: Bot },
   { id: "plan", label: "Plan", icon: Wand2 },
   { id: "brainstorm", label: "Ideas", icon: Lightbulb },
   { id: "research", label: "Research", icon: Search },
@@ -158,7 +159,7 @@ export default function TeamWorkspacePage() {
   const [messageInput, setMessageInput] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [isRepairingWorkspace, setIsRepairingWorkspace] = useState(false)
-  const [igniMode, setIgniMode] = useState<IgniMode>("plan")
+  const [igniMode, setIgniMode] = useState<IgniMode>("ask")
   const [isAskingIgni, setIsAskingIgni] = useState(false)
   const [igniError, setIgniError] = useState<string | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
@@ -602,7 +603,7 @@ export default function TeamWorkspacePage() {
                     general
                   </h2>
                   <p className="truncate text-xs text-muted-foreground">
-                    Chat, plan, and @igni when you need help.
+                    Chat, ask @igni, and decide what to do next.
                   </p>
                 </div>
               </div>
@@ -921,7 +922,7 @@ export default function TeamWorkspacePage() {
                   onChange={(event) => setMessageInput(event.target.value)}
                   placeholder={
                     canSendMessage
-                      ? "Message #general or @igni plan our next step"
+                      ? "Message #general or @igni ask anything"
                       : isMembershipChecking
                         ? "Checking workspace access..."
                         : "Workspace chat opens after a Match"

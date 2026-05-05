@@ -12,11 +12,12 @@ type SparkBreakdown = {
   status?: string
 }
 
-type WorkspaceMode = "plan" | "brainstorm" | "research" | "recap"
+type WorkspaceMode = "ask" | "plan" | "brainstorm" | "research" | "recap"
 
 const igniReplyPrefix = "__igni_reply__\n"
 
 const modeInstruction: Record<WorkspaceMode, string> = {
+  ask: "Answer the team's actual question directly. Be useful in the current conversation without forcing a plan or checklist unless they ask for one.",
   plan: "Turn the workspace context into a concrete plan with the next few steps. Prefer specific actions over strategy.",
   brainstorm: "Generate useful ideas, options, and tradeoffs for the team. Keep the ideas grounded in the Spark.",
   research: "Help the team figure out what to look up, compare, or validate. If facts are not in the context, clearly mark them as things to verify.",
@@ -24,7 +25,7 @@ const modeInstruction: Record<WorkspaceMode, string> = {
 }
 
 const normalizeMode = (mode: unknown): WorkspaceMode =>
-  mode === "brainstorm" || mode === "research" || mode === "recap" ? mode : "plan"
+  mode === "plan" || mode === "brainstorm" || mode === "research" || mode === "recap" ? mode : "ask"
 
 export async function POST(request: Request) {
   const { teamId, question, mode } = await request.json()
@@ -155,6 +156,7 @@ Mode goal: ${modeInstruction[selectedMode]}
 Rules:
 - Respond in ${responseLanguage}.
 - Use the Spark and recent workspace context below.
+- Answer what the team asked. Do not turn every reply into future steps.
 - Do not invent facts. For anything that needs outside verification, label it as "verify".
 - Prefer short sections and checklists.
 - Keep the answer useful for people who are about to take action together.
