@@ -24,7 +24,7 @@ export default function HomePage() {
                 {isDefaultTitle ? (
                   <>
                     <span>Don’t start</span>{" "}
-                    <span className="home-art-title-emphasis">alone.</span>
+                    <span className="home-art-title-emphasis home-art-title-emphasis-en">alone.</span>
                   </>
                 ) : isChinese ? (
                   <>

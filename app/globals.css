@@ -152,6 +152,17 @@
   transform: rotate(-2deg);
 }
 
+.home-art-title-emphasis-en {
+  font-family: "Iowan Old Style", "Baskerville", "Libre Baskerville", Georgia, "Times New Roman", serif;
+  font-size: 1.08em;
+  font-style: italic;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 0.9;
+  transform: rotate(-2.5deg) scaleY(1.12);
+  transform-origin: 50% 62%;
+}
+
 .home-art-title-emphasis::after {
   content: "";
   position: absolute;
