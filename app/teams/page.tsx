@@ -283,21 +283,25 @@ export default function TeamsPage() {
   )
 
   // Combine membership data
-  const myMemberships = myMembershipsRaw?.map((membership: any) => {
-    const project = membership.team?.project_id ? membershipProjects?.[membership.team.project_id] : null
-    const owner = project?.owner_id ? projectOwners?.[project.owner_id] : null
-    
-    return {
-      ...membership,
-      team: membership.team ? {
-        ...membership.team,
-        project: project ? {
-          ...project,
-          owner
+  const myMemberships = myMembershipsRaw
+    ?.map((membership: any) => {
+      const project = membership.team?.project_id ? membershipProjects?.[membership.team.project_id] : null
+      if (!project || project.status === "archived") return null
+
+      const owner = project?.owner_id ? projectOwners?.[project.owner_id] : null
+
+      return {
+        ...membership,
+        team: membership.team ? {
+          ...membership.team,
+          project: {
+            ...project,
+            owner
+          }
         } : null
-      } : null
-    }
-  })
+      }
+    })
+    .filter(Boolean)
 
   // Pending applications for my projects
   const { data: pendingApplicationsRaw } = useSWR(
@@ -366,8 +370,9 @@ export default function TeamsPage() {
       const projectIds = [...new Set(pendingApplicationsRaw.map((a: any) => a.project_id))]
       const { data, error } = await supabase
         .from("projects")
-        .select("id, title")
+        .select("id, title, status")
         .in("id", projectIds)
+        .neq("status", "archived")
       
       if (error) {
         console.error("Application projects fetch error:", error)
@@ -383,11 +388,18 @@ export default function TeamsPage() {
   )
 
   // Combine application data
-  const pendingApplications = pendingApplicationsRaw?.map((app: any) => ({
-    ...app,
-    user: applicantProfiles?.[app.user_id] || null,
-    project: applicationProjects?.[app.project_id] || null
-  }))
+  const pendingApplications = pendingApplicationsRaw
+    ?.map((app: any) => {
+      const project = applicationProjects?.[app.project_id] || null
+      if (!project || project.status === "archived") return null
+
+      return {
+        ...app,
+        user: applicantProfiles?.[app.user_id] || null,
+        project,
+      }
+    })
+    .filter(Boolean)
 
   const handleApplicationResponse = async (applicationId: string, accept: boolean) => {
     if (!user) return
