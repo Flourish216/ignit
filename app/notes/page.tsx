@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { createClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/i18n/context"
+import { zhCN } from "date-fns/locale"
 
 type Note = {
   id: string
@@ -45,22 +47,29 @@ const getNoteErrorMessage = (error: unknown) => {
   ].filter(Boolean).join(" ")
 
   if (message.includes("archived_at")) {
-    return "Notes archive is not ready yet. Run the updated scripts/create-notes-table.sql in Supabase."
+    return "灵感归档字段还没准备好。请在 Supabase 里运行最新的 scripts/create-notes-table.sql。"
   }
   if (message.includes("public.notes") || message.includes("schema cache") || message.includes("PGRST205")) {
-    return "Notes storage is not ready yet. Run scripts/create-notes-table.sql in Supabase."
+    return "灵感表还没准备好。请先在 Supabase 里运行 scripts/create-notes-table.sql。"
   }
-  return message || "Could not load notes."
+  return message || "灵感加载失败。"
 }
 
 const isMissingArchiveColumn = (error: unknown) => {
-  const message = getNoteErrorMessage(error)
-  return message.includes("Notes archive is not ready yet")
+  const errorObject = error && typeof error === "object" ? error as Record<string, unknown> : null
+  const message = [
+    error instanceof Error ? error.message : null,
+    typeof errorObject?.message === "string" ? errorObject.message : null,
+    typeof errorObject?.details === "string" ? errorObject.details : null,
+  ].filter(Boolean).join(" ")
+  return message.includes("archived_at")
 }
 
 export default function NotesPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { language } = useLanguage()
+  const isZh = language === "zh"
   const [shapingNoteId, setShapingNoteId] = useState<string | null>(null)
   const [shapedNote, setShapedNote] = useState<ShapedNote | null>(null)
   const [shapeError, setShapeError] = useState<string | null>(null)
@@ -152,7 +161,7 @@ export default function NotesPage() {
       setShapedNote((current) => current?.noteId === note.id ? null : current)
       handleCancelEdit()
     } catch (error) {
-      setShapeError(error instanceof Error ? error.message : "Could not save note.")
+      setShapeError(error instanceof Error ? error.message : "灵感保存失败。")
     } finally {
       setIsSavingEdit(false)
     }
@@ -178,7 +187,7 @@ export default function NotesPage() {
       const data = await response.json()
       setShapedNote({ noteId: note.id, result: data.result || {} })
     } catch (error) {
-      setShapeError(error instanceof Error ? error.message : "Could not shape note.")
+      setShapeError(error instanceof Error ? error.message : "Igni 暂时没整理成功。")
     } finally {
       setShapingNoteId(null)
     }
@@ -209,14 +218,14 @@ export default function NotesPage() {
           <div>
             <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-sm text-primary">
               <NotebookPen className="h-4 w-4" />
-              Idea inbox
+              {isZh ? "灵感收件箱" : "Idea inbox"}
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Notes</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">{isZh ? "灵感" : "Notes"}</h1>
             <p className="mt-2 max-w-2xl text-muted-foreground">
-              Keep rough thoughts here before they become Sparks.
+              {isZh ? "把还没成形的想法先放在这里，准备好了再变成 Spark。" : "Keep rough thoughts here before they become Sparks."}
             </p>
           </div>
-          <QuickNoteDialog label="New note" />
+          <QuickNoteDialog label={isZh ? "新灵感" : "New note"} />
         </div>
 
         {error && (
@@ -253,10 +262,10 @@ export default function NotesPage() {
                         <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           <Badge variant="secondary" className="gap-1">
                             <SourceIcon className="h-3 w-3" />
-                            {note.source}
+                            {isZh ? note.source === "voice" ? "语音" : "文字" : note.source}
                           </Badge>
                           <span>
-                            {formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
+                            {formatDistanceToNow(new Date(note.created_at), { addSuffix: true, locale: isZh ? zhCN : undefined })}
                           </span>
                         </div>
                         {editingNoteId === note.id ? (
@@ -283,11 +292,11 @@ export default function NotesPage() {
                               disabled={!editContent.trim() || isSavingEdit}
                             >
                               {isSavingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                              Save
+                              {isZh ? "保存" : "Save"}
                             </Button>
                             <Button type="button" size="sm" variant="outline" className="gap-2" onClick={handleCancelEdit}>
                               <X className="h-4 w-4" />
-                              Cancel
+                              {isZh ? "取消" : "Cancel"}
                             </Button>
                           </>
                         ) : (
@@ -300,7 +309,7 @@ export default function NotesPage() {
                               onClick={() => handleStartEdit(note)}
                             >
                               <Edit3 className="h-4 w-4" />
-                              Edit
+                              {isZh ? "编辑" : "Edit"}
                             </Button>
                             <Button
                               type="button"
@@ -315,7 +324,7 @@ export default function NotesPage() {
                               ) : (
                                 <Wand2 className="h-4 w-4" />
                               )}
-                              Shape
+                              {isZh ? "整理" : "Shape"}
                             </Button>
                             <Button
                               type="button"
@@ -324,7 +333,7 @@ export default function NotesPage() {
                               onClick={() => handleTurnIntoSpark(note.content)}
                             >
                               <Sparkles className="h-4 w-4" />
-                              Spark
+                              {isZh ? "变成 Spark" : "Spark"}
                             </Button>
                           </>
                         )}
@@ -335,7 +344,7 @@ export default function NotesPage() {
                           className="h-9 w-9 text-muted-foreground hover:text-foreground"
                           onClick={() => handleArchive(note.id)}
                           disabled={editingNoteId === note.id}
-                          aria-label="Archive note"
+                          aria-label={isZh ? "归档灵感" : "Archive note"}
                         >
                           <Archive className="h-4 w-4" />
                         </Button>
@@ -345,10 +354,10 @@ export default function NotesPage() {
                       <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-4">
                         <div className="flex items-center gap-2 text-sm font-medium text-primary">
                           <Sparkles className="h-4 w-4" />
-                          Igni shaped this note
+                          {isZh ? "Igni 整理了这条灵感" : "Igni shaped this note"}
                         </div>
                         <p className="mt-3 text-base font-semibold text-foreground">
-                          {shapedNote.result.title || "Untitled Spark"}
+                          {shapedNote.result.title || (isZh ? "未命名 Spark" : "Untitled Spark")}
                         </p>
                         <p className="mt-1 text-sm leading-6 text-muted-foreground">
                           {shapedNote.result.description || note.content}
@@ -359,7 +368,7 @@ export default function NotesPage() {
                           {shapedNote.result.time_availability && <Badge variant="outline">{shapedNote.result.time_availability}</Badge>}
                         </div>
                         <Button className="mt-4" size="sm" onClick={() => handleTurnIntoSpark(note.content)}>
-                          Create Spark from this
+                          {isZh ? "用它创建 Spark" : "Create Spark from this"}
                         </Button>
                       </div>
                     )}
@@ -376,12 +385,12 @@ export default function NotesPage() {
               <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <NotebookPen className="h-6 w-6" />
               </div>
-              <h2 className="mt-4 text-lg font-semibold text-foreground">No notes yet</h2>
+              <h2 className="mt-4 text-lg font-semibold text-foreground">{isZh ? "还没有灵感" : "No notes yet"}</h2>
               <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-                Capture a sentence, voice thought, or half-formed idea. You can turn it into a Spark later.
+                {isZh ? "先记下一句话、一段语音，或者一个还没想清楚的念头。之后可以再变成 Spark。" : "Capture a sentence, voice thought, or half-formed idea. You can turn it into a Spark later."}
               </p>
               <div className="mt-5">
-                <QuickNoteDialog label="Capture first note" />
+                <QuickNoteDialog label={isZh ? "记录第一条灵感" : "Capture first note"} />
               </div>
             </CardContent>
           </Card>

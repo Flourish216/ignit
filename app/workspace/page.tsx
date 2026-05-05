@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/i18n/context"
 
 type TeamTarget = {
   id: string
@@ -43,9 +44,45 @@ const firstRelation = <T,>(relation: T | T[] | null | undefined) =>
 const getWorkspaceActivityTime = (team: TeamTarget) =>
   Math.max(getTime(team.latest_message_at), getTime(team.created_at))
 
+const categoryZh: Record<string, string> = {
+  Build: "做东西",
+  Learn: "学习",
+  Move: "运动",
+  Go: "出门",
+  Create: "创作",
+  Spark: "Spark",
+}
+
+const statusZh: Record<string, string> = {
+  open: "开放中",
+  matched: "已开始",
+  recruiting: "开放中",
+  in_progress: "已开始",
+  completed: "完成",
+}
+
+const commonZh: Record<string, string> = {
+  Flexible: "灵活",
+  Online: "线上",
+  Campus: "校园",
+  Local: "本地",
+  "Someone interested": "感兴趣的人",
+}
+
+const getVisibleCategory = (category: string | undefined, isZh: boolean) =>
+  isZh ? categoryZh[category || "Spark"] || category || "Spark" : category || "Spark"
+
+const getVisibleStatus = (status: string | undefined, isZh: boolean) =>
+  isZh ? statusZh[status || "open"] || status || "开放中" : status || "open"
+
+const getVisibleText = (value: string | undefined, isZh: boolean) =>
+  isZh ? commonZh[value || ""] || value : value
+
 export default function WorkspaceShortcutPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { language } = useLanguage()
+  const isZh = language === "zh"
 
   const { data: user, isLoading: userLoading } = useSWR(
     "user",
@@ -200,19 +237,19 @@ export default function WorkspaceShortcutPage() {
               <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <MessageSquare className="h-6 w-6" />
               </div>
-              <h1 className="mt-5 text-2xl font-semibold text-foreground">No workspace yet</h1>
+              <h1 className="mt-5 text-2xl font-semibold text-foreground">{isZh ? "还没有工作区" : "No workspace yet"}</h1>
               <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-                Create a Spark first. Its workspace opens automatically so you can keep building the idea.
+                {isZh ? "先创建一个 Spark。工作区会自动打开，方便你继续推进想法。" : "Create a Spark first. Its workspace opens automatically so you can keep building the idea."}
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
                 <Button asChild className="gap-2">
                   <Link href="/create">
                     <Plus className="h-4 w-4" />
-                    New Spark
+                    {isZh ? "新建 Spark" : "New Spark"}
                   </Link>
                 </Button>
                 <Button asChild variant="outline">
-                  <Link href="/teams">My Sparks</Link>
+                  <Link href="/teams">{isZh ? "我的 Spark" : "My Sparks"}</Link>
                 </Button>
               </div>
             </CardContent>
@@ -223,19 +260,19 @@ export default function WorkspaceShortcutPage() {
               <div>
                 <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-sm text-primary">
                   <MessageSquare className="h-4 w-4" />
-                  Workspace
+                  {isZh ? "工作区" : "Workspace"}
                 </div>
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                  Choose a workspace
+                  {isZh ? "选择一个工作区" : "Choose a workspace"}
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground sm:text-base">
-                  You have more than one active Spark. Pick the room you want to continue.
+                  {isZh ? "你有多个正在进行的 Spark。选择一个你想继续的房间。" : "You have more than one active Spark. Pick the room you want to continue."}
                 </p>
               </div>
               <Button asChild className="w-full gap-2 sm:w-auto">
                 <Link href="/create">
                   <Plus className="h-4 w-4" />
-                  New Spark
+                  {isZh ? "新建 Spark" : "New Spark"}
                 </Link>
               </Button>
             </div>
@@ -243,9 +280,9 @@ export default function WorkspaceShortcutPage() {
             <div className="grid gap-3 sm:gap-4 md:grid-cols-2">
               {workspaces?.map((team) => {
                 const details = team.project?.ai_breakdown || {}
-                const title = details.title || team.project?.title || team.name || "Untitled workspace"
-                const description = details.description || team.project?.description || "No Spark brief yet."
-                const activityLabel = team.latest_message_at ? "recent chat" : "created"
+                const title = details.title || team.project?.title || team.name || (isZh ? "未命名工作区" : "Untitled workspace")
+                const description = details.description || team.project?.description || (isZh ? "还没有 Spark 简介。" : "No Spark brief yet.")
+                const activityLabel = team.latest_message_at ? isZh ? "最近聊天" : "recent chat" : isZh ? "创建于" : "created"
                 const status = details.status || team.project?.status || "open"
 
                 return (
@@ -256,10 +293,10 @@ export default function WorkspaceShortcutPage() {
                           <div className="mb-2 flex flex-wrap items-center gap-2">
                             <Badge variant="secondary" className="gap-1">
                               <Sparkles className="h-3 w-3" />
-                              {details.category || "Spark"}
+                              {getVisibleCategory(details.category, isZh)}
                             </Badge>
                             <Badge variant="outline" className="capitalize">
-                              {status}
+                              {getVisibleStatus(status, isZh)}
                             </Badge>
                           </div>
                           <h2 className="line-clamp-2 text-lg font-semibold text-foreground">{title}</h2>
@@ -271,23 +308,23 @@ export default function WorkspaceShortcutPage() {
                       <div className="mt-4 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
                         <div className="flex items-center gap-2 rounded-md bg-secondary/60 px-2.5 py-2">
                           <Users className="h-3.5 w-3.5" />
-                          <span>{team.member_count || 0} people</span>
+                          <span>{team.member_count || 0} {isZh ? "人" : "people"}</span>
                         </div>
                         <div className="rounded-md bg-secondary/60 px-2.5 py-2">
                           {activityLabel}:{" "}
-                          {new Date(team.latest_message_at || team.created_at || Date.now()).toLocaleDateString()}
+                          {new Date(team.latest_message_at || team.created_at || Date.now()).toLocaleDateString(isZh ? "zh-CN" : undefined)}
                         </div>
                       </div>
 
                       {details.looking_for && (
                         <div className="mt-3 rounded-md bg-primary/5 px-2.5 py-2 text-xs text-foreground">
-                          Looking for: {details.looking_for}
+                          {isZh ? "想找：" : "Looking for: "}{getVisibleText(details.looking_for, isZh)}
                         </div>
                       )}
 
                       <Button asChild className="mt-5 w-full gap-2">
                         <Link href={`/team/${team.id}`}>
-                          Open workspace
+                          {isZh ? "打开工作区" : "Open workspace"}
                           <ArrowRight className="h-4 w-4" />
                         </Link>
                       </Button>

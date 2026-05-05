@@ -32,6 +32,8 @@ import useSWR, { mutate } from "swr"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { formatDistanceToNow } from "date-fns"
+import { zhCN } from "date-fns/locale"
+import { useLanguage } from "@/lib/i18n/context"
 
 const goalsPrefix = "profile:goals:"
 const availabilityPrefix = "profile:availability:"
@@ -61,9 +63,30 @@ function getVisibleProfileTags(profile: any) {
   return [...skills, ...interests]
 }
 
+const statusZh: Record<string, string> = {
+  recruiting: "开放中",
+  in_progress: "已开始",
+  completed: "完成",
+  archived: "已归档",
+  open: "开放中",
+  matched: "已开始",
+}
+
+const getVisibleStatus = (status: string | undefined, isZh: boolean) =>
+  isZh ? statusZh[status || ""] || status || "开放中" : status || "recruiting"
+
+const getVisibleRole = (role: string | undefined, isZh: boolean) => {
+  if (!isZh) return role || "Interested"
+  if (!role || role === "Interested") return "感兴趣"
+  if (role === "owner") return "发起人"
+  return role
+}
+
 export default function TeamsPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { language } = useLanguage()
+  const isZh = language === "zh"
   const [selectedApplication, setSelectedApplication] = useState<any>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [openingWorkspaceId, setOpeningWorkspaceId] = useState<string | null>(null)
@@ -345,7 +368,7 @@ export default function TeamsPage() {
       const userIds = [...new Set(pendingApplicationsRaw.map((a: any) => a.user_id))]
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, full_name, avatar_url, bio, skills, interests, location, website")
+        .select("id, full_name, avatar_url, bio, skills, interests, current_goals, availability, location, website")
         .in("id", userIds)
       
       if (error) {
@@ -428,7 +451,7 @@ export default function TeamsPage() {
             .from("teams")
             .insert({ 
               project_id: application.project_id, 
-              name: `${application.project?.title} Team`,
+              name: `${application.project?.title} 工作区`,
               created_by: user.id,
             })
             .select()
@@ -458,7 +481,7 @@ export default function TeamsPage() {
             {
             team_id: team?.id,
             user_id: application.user_id,
-            role: application.role_applied,
+            role: application.role_applied || "Interested",
             status: "accepted",
             },
             { onConflict: "team_id,user_id" },
@@ -474,7 +497,9 @@ export default function TeamsPage() {
           await supabase.from("messages").insert({
             project_id: application.project_id,
             user_id: user.id,
-            content: `Match started: ${application.user?.full_name || "Someone"} joined this Spark. Say hi and decide the first tiny step.`,
+            content: isZh
+              ? `匹配开始：${application.user?.full_name || "有人"} 加入了这个 Spark。先打个招呼，再定一个最小的下一步。`
+              : `Match started: ${application.user?.full_name || "Someone"} joined this Spark. Say hi and decide the first tiny step.`,
           })
         }
       }
@@ -515,7 +540,7 @@ export default function TeamsPage() {
           .from("teams")
           .insert({
             project_id: project.id,
-            name: `${project.title} Workspace`,
+            name: `${project.title} 工作区`,
             created_by: user.id,
           })
           .select("id")
@@ -525,7 +550,7 @@ export default function TeamsPage() {
         team = newTeam
       }
 
-      if (!team?.id) throw new Error("Could not open workspace")
+      if (!team?.id) throw new Error(isZh ? "工作区打开失败。" : "Could not open workspace")
 
       await supabase
         .from("team_members")
@@ -572,9 +597,9 @@ export default function TeamsPage() {
 
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">My Sparks</h1>
+          <h1 className="text-3xl font-bold text-foreground">{isZh ? "我的 Spark" : "My Sparks"}</h1>
           <p className="mt-1 text-muted-foreground">
-            Review interest, see what you posted, and open workspaces when a Spark becomes a Match.
+            {isZh ? "管理你发布的 Spark、查看感兴趣的人，并进入工作区继续推进。" : "Review interest, see what you posted, and open workspaces when a Spark becomes a Match."}
           </p>
         </div>
 
@@ -588,15 +613,15 @@ export default function TeamsPage() {
                 </div>
                 <div>
                   <p className="font-medium text-foreground">
-                    {pendingApplications.length} new interest{pendingApplications.length > 1 ? "s" : ""}
+                    {isZh ? `${pendingApplications.length} 个新回应` : `${pendingApplications.length} new interest${pendingApplications.length > 1 ? "s" : ""}`}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    People responded to your Sparks.
+                    {isZh ? "有人对你的 Spark 感兴趣。" : "People responded to your Sparks."}
                   </p>
                 </div>
               </div>
               <Button variant="outline" size="sm" onClick={() => setActiveView("applications")}>
-                Review
+                {isZh ? "查看" : "Review"}
               </Button>
             </CardContent>
           </Card>
@@ -605,9 +630,9 @@ export default function TeamsPage() {
         <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
           <aside className="rounded-lg border border-border bg-card p-2 lg:sticky lg:top-24 lg:self-start">
             {[
-              { id: "owned", label: "Posted Sparks", detail: "Things you started", icon: FolderOpen, count: myProjects?.length || 0 },
-              { id: "member", label: "Matches", detail: "Accepted Sparks", icon: Users, count: myMemberships?.length || 0 },
-              { id: "applications", label: "Interest", detail: "People who responded", icon: Mail, count: pendingApplications?.length || 0 },
+              { id: "owned", label: isZh ? "我发布的" : "Posted Sparks", detail: isZh ? "你发起的事情" : "Things you started", icon: FolderOpen, count: myProjects?.length || 0 },
+              { id: "member", label: isZh ? "已匹配" : "Matches", detail: isZh ? "已经开始的 Spark" : "Accepted Sparks", icon: Users, count: myMemberships?.length || 0 },
+              { id: "applications", label: isZh ? "回应" : "Interest", detail: isZh ? "感兴趣的人" : "People who responded", icon: Mail, count: pendingApplications?.length || 0 },
             ].map((item) => {
               const Icon = item.icon
               const isActive = activeView === item.id
@@ -644,7 +669,7 @@ export default function TeamsPage() {
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <h2 className="truncate text-base font-semibold text-foreground">{project.title}</h2>
-                            <Badge variant={project.status === "recruiting" ? "default" : "secondary"}>{project.status}</Badge>
+                            <Badge variant={project.status === "recruiting" ? "default" : "secondary"}>{getVisibleStatus(project.status, isZh)}</Badge>
                           </div>
                           <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{project.description}</p>
                         </div>
@@ -657,11 +682,11 @@ export default function TeamsPage() {
                             {openingWorkspaceId === project.id ? (
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             ) : null}
-                            Open Workspace
+                            {isZh ? "打开工作区" : "Open Workspace"}
                           </Button>
                           <Button asChild size="sm" variant="outline">
                             <Link href={`/project/${project.id}`}>
-                              View
+                              {isZh ? "查看" : "View"}
                               <ArrowRight className="ml-2 h-4 w-4" />
                             </Link>
                           </Button>
@@ -670,17 +695,17 @@ export default function TeamsPage() {
 
                       <div className="mt-4 grid gap-3 sm:grid-cols-3">
                         <div className="rounded-md bg-secondary/50 p-3">
-                          <p className="text-xs text-muted-foreground">People</p>
+                          <p className="text-xs text-muted-foreground">{isZh ? "成员" : "People"}</p>
                           <p className="mt-1 text-sm font-medium text-foreground">
-                          {project.teams?.[0]?.team_members?.length || 0} people
+                          {project.teams?.[0]?.team_members?.length || 0} {isZh ? "人" : "people"}
                           </p>
                         </div>
                         <div className="rounded-md bg-secondary/50 p-3 sm:col-span-2">
-                          <p className="text-xs text-muted-foreground">Next step</p>
+                          <p className="text-xs text-muted-foreground">{isZh ? "下一步" : "Next step"}</p>
                           <p className="mt-1 text-sm text-foreground">
                             {project.teams?.[0]?.team_members?.length > 0
-                              ? "Open the workspace and decide the first concrete step."
-                              : "Open the workspace, ask Igni, and keep shaping the idea while you find people."}
+                              ? isZh ? "打开工作区，先定下一个具体动作。" : "Open the workspace and decide the first concrete step."
+                              : isZh ? "先打开工作区，问问 Igni，边找人边继续整理想法。" : "Open the workspace, ask Igni, and keep shaping the idea while you find people."}
                           </p>
                         </div>
                       </div>
@@ -690,9 +715,9 @@ export default function TeamsPage() {
               ) : (
                 <div className="rounded-lg border border-dashed border-border p-10 text-center">
                   <FolderOpen className="mx-auto h-10 w-10 text-muted-foreground" />
-                  <h3 className="mt-3 font-semibold text-foreground">No Sparks yet</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Post something you want to do with someone else.</p>
-                  <Button asChild className="mt-4"><Link href="/create">New Spark</Link></Button>
+                  <h3 className="mt-3 font-semibold text-foreground">{isZh ? "还没有 Spark" : "No Sparks yet"}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{isZh ? "发布一件你想和别人一起做的事。" : "Post something you want to do with someone else."}</p>
+                  <Button asChild className="mt-4"><Link href="/create">{isZh ? "新建 Spark" : "New Spark"}</Link></Button>
                 </div>
               )
             )}
@@ -714,13 +739,13 @@ export default function TeamsPage() {
                             <Link href={`/project/${membership.team?.project?.id}`} className="font-semibold text-foreground hover:text-primary">
                               {membership.team?.project?.title}
                             </Link>
-                            <p className="text-sm text-muted-foreground">{membership.role}</p>
+                            <p className="text-sm text-muted-foreground">{getVisibleRole(membership.role, isZh)}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge variant="secondary">{membership.team?.project?.status}</Badge>
+                          <Badge variant="secondary">{getVisibleStatus(membership.team?.project?.status, isZh)}</Badge>
                           {membership.team?.id && (
-                            <Button asChild size="sm"><Link href={`/team/${membership.team.id}`}>Open Workspace</Link></Button>
+                            <Button asChild size="sm"><Link href={`/team/${membership.team.id}`}>{isZh ? "打开工作区" : "Open Workspace"}</Link></Button>
                           )}
                         </div>
                       </div>
@@ -730,9 +755,9 @@ export default function TeamsPage() {
               ) : (
                 <div className="rounded-lg border border-dashed border-border p-10 text-center">
                   <Users className="mx-auto h-10 w-10 text-muted-foreground" />
-                  <h3 className="mt-3 font-semibold text-foreground">Nothing started yet</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">Browse Sparks and say you are interested.</p>
-                  <Button asChild className="mt-4"><Link href="/explore">Browse Sparks</Link></Button>
+                  <h3 className="mt-3 font-semibold text-foreground">{isZh ? "还没有开始的 Spark" : "Nothing started yet"}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{isZh ? "去发现页看看，遇到想加入的就表达兴趣。" : "Browse Sparks and say you are interested."}</p>
+                  <Button asChild className="mt-4"><Link href="/explore">{isZh ? "发现 Spark" : "Browse Sparks"}</Link></Button>
                 </div>
               )
             )}
@@ -751,18 +776,18 @@ export default function TeamsPage() {
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-semibold text-foreground">{application.user?.full_name || "Anonymous"}</p>
+                            <p className="font-semibold text-foreground">{application.user?.full_name || (isZh ? "匿名用户" : "Anonymous")}</p>
                             <p className="text-sm text-muted-foreground">
-                              Is interested in <span className="font-medium">{application.project?.title}</span>
+                              {isZh ? "对" : "Is interested in"} <span className="font-medium">{application.project?.title}</span>{isZh ? "感兴趣" : ""}
                             </p>
                             <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                               <Clock className="h-3 w-3" />
-                              {formatDistanceToNow(new Date(application.created_at), { addSuffix: true })}
+                              {formatDistanceToNow(new Date(application.created_at), { addSuffix: true, locale: isZh ? zhCN : undefined })}
                             </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button size="sm" variant="outline" onClick={() => setSelectedApplication(application)}>View</Button>
+                          <Button size="sm" variant="outline" onClick={() => setSelectedApplication(application)}>{isZh ? "查看" : "View"}</Button>
                           <Button size="sm" variant="outline" onClick={() => handleApplicationResponse(application.id, false)} disabled={isProcessing}>
                             <X className="h-4 w-4" />
                           </Button>
@@ -777,8 +802,8 @@ export default function TeamsPage() {
               ) : (
                 <div className="rounded-lg border border-dashed border-border p-10 text-center">
                   <Mail className="mx-auto h-10 w-10 text-muted-foreground" />
-                  <h3 className="mt-3 font-semibold text-foreground">No new interest</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">When people respond to your Sparks, they will appear here.</p>
+                  <h3 className="mt-3 font-semibold text-foreground">{isZh ? "还没有新回应" : "No new interest"}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{isZh ? "有人回应你的 Spark 后，会出现在这里。" : "When people respond to your Sparks, they will appear here."}</p>
                 </div>
               )
             )}
@@ -789,9 +814,9 @@ export default function TeamsPage() {
         <Dialog open={!!selectedApplication} onOpenChange={() => setSelectedApplication(null)}>
           <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Interest profile</DialogTitle>
+              <DialogTitle>{isZh ? "回应者主页" : "Interest profile"}</DialogTitle>
               <DialogDescription>
-                Review the person who responded to {selectedApplication?.project?.title}
+                {isZh ? `查看回应「${selectedApplication?.project?.title || ""}」的人` : `Review the person who responded to ${selectedApplication?.project?.title}`}
               </DialogDescription>
             </DialogHeader>
             {selectedApplication && (
@@ -805,13 +830,13 @@ export default function TeamsPage() {
                   </Avatar>
                   <div className="min-w-0 flex-1">
                     <p className="text-lg font-semibold">
-                      {selectedApplication.user?.full_name || "Anonymous"}
+                      {selectedApplication.user?.full_name || (isZh ? "匿名用户" : "Anonymous")}
                     </p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      Interested in <span className="font-medium text-foreground">{selectedApplication.project?.title}</span>
+                      {isZh ? "感兴趣：" : "Interested in"} <span className="font-medium text-foreground">{selectedApplication.project?.title}</span>
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Badge>{selectedApplication.role_applied}</Badge>
+                      <Badge>{getVisibleRole(selectedApplication.role_applied, isZh)}</Badge>
                       {selectedApplication.user?.location && (
                         <Badge variant="outline" className="gap-1">
                           <MapPin className="h-3 w-3" />
@@ -827,30 +852,30 @@ export default function TeamsPage() {
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-lg border border-border p-4">
-                    <p className="text-sm font-medium text-muted-foreground">About</p>
+                    <p className="text-sm font-medium text-muted-foreground">{isZh ? "关于" : "About"}</p>
                     <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">
-                      {selectedApplication.user?.bio || "No profile description yet."}
+                      {selectedApplication.user?.bio || (isZh ? "还没有主页描述。" : "No profile description yet.")}
                     </p>
                   </div>
 
                   <div className="rounded-lg border border-border p-4">
-                    <p className="text-sm font-medium text-muted-foreground">Wants to start</p>
+                    <p className="text-sm font-medium text-muted-foreground">{isZh ? "想开始什么" : "Wants to start"}</p>
                     <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">
-                      {getProfileGoals(selectedApplication.user) || "No start intent added yet."}
+                      {getProfileGoals(selectedApplication.user) || (isZh ? "还没有填写想开始的事。" : "No start intent added yet.")}
                     </p>
                   </div>
                 </div>
 
                 {selectedApplication.message && (
                   <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                    <p className="text-sm font-medium text-muted-foreground">Message</p>
+                    <p className="text-sm font-medium text-muted-foreground">{isZh ? "留言" : "Message"}</p>
                     <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">{selectedApplication.message}</p>
                   </div>
                 )}
 
                 {getVisibleProfileTags(selectedApplication.user).length > 0 && (
                   <div className="rounded-lg border border-border p-4">
-                    <p className="text-sm font-medium text-muted-foreground">Profile notes</p>
+                    <p className="text-sm font-medium text-muted-foreground">{isZh ? "主页信息" : "Profile notes"}</p>
                     <div className="mt-2 flex flex-wrap gap-1">
                       {getVisibleProfileTags(selectedApplication.user).map((skill: string, index: number) => (
                         <Badge key={index} variant="secondary">
@@ -864,7 +889,7 @@ export default function TeamsPage() {
                 {selectedApplication.user?.website && (
                   <Button asChild variant="outline" className="w-full justify-center gap-2">
                     <a href={selectedApplication.user.website} target="_blank" rel="noreferrer">
-                      Open website
+                      {isZh ? "打开链接" : "Open website"}
                       <ExternalLink className="h-4 w-4" />
                     </a>
                   </Button>
@@ -878,7 +903,7 @@ export default function TeamsPage() {
                 disabled={isProcessing}
               >
                 <X className="mr-2 h-4 w-4" />
-                Decline
+                {isZh ? "拒绝" : "Decline"}
               </Button>
               <Button
                 onClick={() => handleApplicationResponse(selectedApplication?.id, true)}
@@ -889,7 +914,7 @@ export default function TeamsPage() {
                 ) : (
                   <Check className="mr-2 h-4 w-4" />
                 )}
-                Accept
+                {isZh ? "接受" : "Accept"}
               </Button>
             </DialogFooter>
           </DialogContent>

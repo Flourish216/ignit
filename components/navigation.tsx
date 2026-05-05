@@ -22,7 +22,8 @@ export function Navigation() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  const { t } = useLanguage()
+  const { language, t } = useLanguage()
+  const isZh = language === "zh"
   const [searchQuery, setSearchQuery] = useState("")
 
   const navItems = [
@@ -75,7 +76,7 @@ export function Navigation() {
           )}
         >
           <Avatar className="h-9 w-9">
-            <AvatarImage src={profile?.avatar_url || ""} alt={profile?.full_name || "User"} />
+            <AvatarImage src={profile?.avatar_url || ""} alt={profile?.full_name || (isZh ? "用户" : "User")} />
             <AvatarFallback className="bg-primary text-primary-foreground">
               {getInitial()}
             </AvatarFallback>
@@ -83,7 +84,7 @@ export function Navigation() {
           {align === "start" && (
             <div className="min-w-0 text-left">
               <div className="truncate text-sm font-medium text-foreground">
-                {profile?.full_name || "User"}
+                {profile?.full_name || (isZh ? "用户" : "User")}
               </div>
               <div className="truncate text-xs text-muted-foreground">{user?.email}</div>
             </div>
@@ -99,7 +100,7 @@ export function Navigation() {
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <span className="block truncate text-sm font-medium">{profile?.full_name || "User"}</span>
+            <span className="block truncate text-sm font-medium">{profile?.full_name || (isZh ? "用户" : "User")}</span>
             <span className="block truncate text-xs text-muted-foreground">{user?.email}</span>
           </div>
         </div>

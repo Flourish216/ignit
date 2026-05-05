@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { formatDistanceToNow } from "date-fns"
+import { zhCN } from "date-fns/locale"
 import useSWR, { mutate } from "swr"
 import { Archive, ArrowLeft, Calendar, CheckCircle2, Clock, Edit3, Loader2, MapPin, MessageCircle, MessageSquare, Send, UserRound, XCircle } from "lucide-react"
 import { Navigation } from "@/components/navigation"
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { createClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/i18n/context"
 
 type IntentBreakdown = {
   title?: string
@@ -54,6 +56,42 @@ const detailFields: Array<{ key: keyof IntentBreakdown; label: string; icon: typ
   { key: "looking_for", label: "Looking for", icon: UserRound },
   { key: "vibe", label: "Vibe", icon: MessageCircle },
 ]
+const detailFieldZh: Record<string, string> = {
+  Location: "地点",
+  Time: "时间",
+  "Looking for": "想找谁",
+  Vibe: "氛围",
+}
+
+const categoryZh: Record<string, string> = {
+  Build: "做东西",
+  Learn: "学习",
+  Move: "运动",
+  Go: "出门",
+  Create: "创作",
+  Other: "其他",
+}
+
+const statusZh: Record<string, string> = {
+  open: "开放中",
+  matched: "已开始",
+  paused: "暂停",
+  done: "完成",
+  archived: "已归档",
+}
+
+const commonZh: Record<string, string> = {
+  Flexible: "灵活",
+  Online: "线上",
+  Campus: "校园",
+  Local: "本地",
+  "Someone interested": "感兴趣的人",
+  "Low-pressure": "轻松一点",
+  "One-time": "一次",
+  recurring: "持续",
+  casual: "轻松",
+  focused: "专注",
+}
 
 const getStatusLabel = (status: string, intentStatus?: string) => {
   if (intentStatus) return intentStatus
@@ -62,9 +100,22 @@ const getStatusLabel = (status: string, intentStatus?: string) => {
   return status
 }
 
+const getVisibleCategory = (category: string | undefined, isZh: boolean) =>
+  isZh ? categoryZh[category || "Other"] || category || "其他" : category || "Other"
+
+const getVisibleStatus = (status: string, isZh: boolean) =>
+  isZh ? statusZh[status] || status : status
+
+const getVisibleDetailValue = (value: string | undefined, isZh: boolean) => {
+  const text = value || (isZh ? "灵活" : "Flexible")
+  return isZh ? commonZh[text] || text : text
+}
+
 export default function SparkDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { language } = useLanguage()
+  const isZh = language === "zh"
   const id = params?.id as string | null
   const supabase = createClient()
   const [message, setMessage] = useState("")
@@ -211,7 +262,7 @@ export default function SparkDetailPage() {
       setMessage("")
       setIsDialogOpen(false)
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not send interest")
+      setErrorMessage(error instanceof Error ? error.message : isZh ? "发送失败，请再试一次。" : "Could not send interest")
     } finally {
       setIsSendingInterest(false)
     }
@@ -219,7 +270,7 @@ export default function SparkDetailPage() {
 
   const handleArchiveSpark = async () => {
     if (!user || !id || !isOwner) return
-    if (!window.confirm("Archive this Spark? It will disappear from Browse but stay in your account.")) return
+    if (!window.confirm(isZh ? "归档这个 Spark？它会从发现页隐藏，但仍保留在你的账号里。" : "Archive this Spark? It will disappear from Browse but stay in your account.")) return
 
     setIsArchivingSpark(true)
     setErrorMessage(null)
@@ -243,7 +294,7 @@ export default function SparkDetailPage() {
 
       router.push("/profile")
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not archive Spark")
+      setErrorMessage(error instanceof Error ? error.message : isZh ? "归档失败，请再试一次。" : "Could not archive Spark")
     } finally {
       setIsArchivingSpark(false)
     }
@@ -260,7 +311,7 @@ export default function SparkDetailPage() {
     const nextDescription = editForm.description.trim()
 
     if (!nextTitle || !nextDescription) {
-      setErrorMessage("Title and description are required.")
+      setErrorMessage(isZh ? "标题和描述都要填。" : "Title and description are required.")
       return
     }
 
@@ -273,11 +324,11 @@ export default function SparkDetailPage() {
       title: nextTitle,
       category: editForm.category.trim() || "Other",
       description: nextDescription,
-      location: editForm.location.trim() || "Flexible",
-      time_availability: editForm.time_availability.trim() || "Flexible",
-      looking_for: editForm.looking_for.trim() || "Someone interested",
-      vibe: editForm.vibe.trim() || "Low-pressure",
-      commitment: editForm.commitment.trim() || "Flexible",
+      location: editForm.location.trim() || (isZh ? "灵活" : "Flexible"),
+      time_availability: editForm.time_availability.trim() || (isZh ? "时间灵活" : "Flexible"),
+      looking_for: editForm.looking_for.trim() || (isZh ? "感兴趣的人" : "Someone interested"),
+      vibe: editForm.vibe.trim() || (isZh ? "轻松一点" : "Low-pressure"),
+      commitment: editForm.commitment.trim() || (isZh ? "灵活" : "Flexible"),
       status: editForm.status.trim() || getStatusLabel(intent.status || "recruiting"),
     }
 
@@ -300,7 +351,7 @@ export default function SparkDetailPage() {
       mutate(["intent", id], data, { revalidate: false })
       setIsEditDialogOpen(false)
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not save Spark")
+      setErrorMessage(error instanceof Error ? error.message : isZh ? "保存失败，请再试一次。" : "Could not save Spark")
     } finally {
       setIsSavingSpark(false)
     }
@@ -320,7 +371,7 @@ export default function SparkDetailPage() {
           .from("teams")
           .insert({
             project_id: id,
-            name: `${title} Workspace`,
+            name: `${title} 工作区`,
             created_by: user.id,
           })
           .select("id")
@@ -330,7 +381,7 @@ export default function SparkDetailPage() {
         team = newTeam
       }
 
-      if (!team?.id) throw new Error("Could not open workspace")
+      if (!team?.id) throw new Error(isZh ? "工作区打开失败。" : "Could not open workspace")
 
       await supabase
         .from("team_members")
@@ -347,7 +398,7 @@ export default function SparkDetailPage() {
       mutateProjectTeam()
       router.push(`/team/${team.id}`)
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not open workspace")
+      setErrorMessage(error instanceof Error ? error.message : isZh ? "工作区打开失败，请再试一次。" : "Could not open workspace")
     } finally {
       setIsOpeningWorkspace(false)
     }
@@ -369,12 +420,12 @@ export default function SparkDetailPage() {
       <div className="min-h-screen bg-background lg:pl-64">
         <Navigation />
         <main className="mx-auto max-w-3xl px-4 py-16 text-center">
-          <h1 className="text-2xl font-semibold">Spark not found</h1>
+          <h1 className="text-2xl font-semibold">{isZh ? "找不到这个 Spark" : "Spark not found"}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {error ? error.message : "This Spark may have been removed."}
+            {error ? error.message : isZh ? "这个 Spark 可能已经被移除或归档。" : "This Spark may have been removed."}
           </p>
           <Button asChild className="mt-5">
-            <Link href="/explore">Back to Browse</Link>
+            <Link href="/explore">{isZh ? "返回发现" : "Back to Browse"}</Link>
           </Button>
         </main>
       </div>
@@ -396,7 +447,7 @@ export default function SparkDetailPage() {
           className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Browse
+          {isZh ? "返回发现" : "Back to Browse"}
         </Link>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
@@ -404,9 +455,9 @@ export default function SparkDetailPage() {
             <Card className="border-primary/20">
               <CardHeader>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge>{details.category || "Other"}</Badge>
-                  <Badge variant="outline" className="capitalize">{status}</Badge>
-                  {details.commitment && <Badge variant="secondary">{details.commitment}</Badge>}
+                  <Badge>{getVisibleCategory(details.category, isZh)}</Badge>
+                  <Badge variant="outline" className="capitalize">{getVisibleStatus(status, isZh)}</Badge>
+                  {details.commitment && <Badge variant="secondary">{getVisibleDetailValue(details.commitment, isZh)}</Badge>}
                 </div>
                 <CardTitle className="pt-2 text-3xl font-semibold tracking-tight">{title}</CardTitle>
                 <CardDescription className="text-base">{description}</CardDescription>
@@ -421,12 +472,12 @@ export default function SparkDetailPage() {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="text-sm font-medium">{owner?.full_name || "Anonymous"}</p>
-                      <p className="text-xs text-muted-foreground">Posted this Spark</p>
+                      <p className="text-sm font-medium">{owner?.full_name || (isZh ? "匿名用户" : "Anonymous")}</p>
+                      <p className="text-xs text-muted-foreground">{isZh ? "发布了这个 Spark" : "Posted this Spark"}</p>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(intent.created_at), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(intent.created_at), { addSuffix: true, locale: isZh ? zhCN : undefined })}
                   </p>
                 </div>
               </CardContent>
@@ -440,10 +491,10 @@ export default function SparkDetailPage() {
                     <CardContent className="p-4">
                       <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                         <Icon className="h-4 w-4 text-primary" />
-                        {field.label}
+                        {isZh ? detailFieldZh[field.label] || field.label : field.label}
                       </div>
                       <p className="mt-2 text-sm text-muted-foreground">
-                        {details[field.key] || "Flexible"}
+                        {getVisibleDetailValue(details[field.key], isZh)}
                       </p>
                     </CardContent>
                   </Card>
@@ -455,146 +506,146 @@ export default function SparkDetailPage() {
           <aside className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Want to join?</CardTitle>
+                <CardTitle className="text-base">{isZh ? "想加入吗？" : "Want to join?"}</CardTitle>
                 <CardDescription>
-                  Send a short note so the other person knows why you are interested.
+                  {isZh ? "发一小段说明，让对方知道你为什么感兴趣。" : "Send a short note so the other person knows why you are interested."}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {isOwner ? (
                   <div className="space-y-3">
                     <div className="rounded-lg bg-secondary p-3 text-sm">
-                      <span className="font-medium">{interestCount || 0}</span> interested
+                      <span className="font-medium">{interestCount || 0}</span> {isZh ? "个人感兴趣" : "interested"}
                     </div>
                     <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                       <DialogTrigger asChild>
                         <Button className="w-full" variant="outline">
                           <Edit3 className="mr-2 h-4 w-4" />
-                          Edit Spark
+                          {isZh ? "编辑 Spark" : "Edit Spark"}
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                         <DialogHeader>
-                          <DialogTitle>Edit Spark Card</DialogTitle>
+                          <DialogTitle>{isZh ? "编辑 Spark 卡片" : "Edit Spark Card"}</DialogTitle>
                           <DialogDescription>
-                            Update the public card people see before they respond.
+                            {isZh ? "更新别人回应前会看到的公开卡片。" : "Update the public card people see before they respond."}
                           </DialogDescription>
                         </DialogHeader>
 
                         <div className="grid gap-4">
                           <div className="grid gap-2">
-                            <p className="text-sm font-medium text-foreground">Title</p>
+                            <p className="text-sm font-medium text-foreground">{isZh ? "标题" : "Title"}</p>
                             <Input
                               value={editForm.title}
                               onChange={(event) => handleEditField("title", event.target.value)}
-                              placeholder="What do you want to do?"
+                              placeholder={isZh ? "你想做什么？" : "What do you want to do?"}
                             />
                           </div>
 
                           <div className="grid gap-2">
-                            <p className="text-sm font-medium text-foreground">Description</p>
+                            <p className="text-sm font-medium text-foreground">{isZh ? "描述" : "Description"}</p>
                             <Textarea
                               value={editForm.description}
                               onChange={(event) => handleEditField("description", event.target.value)}
-                              placeholder="Describe what this Spark is about."
+                              placeholder={isZh ? "描述一下这个 Spark 是什么。" : "Describe what this Spark is about."}
                               className="min-h-24"
                             />
                           </div>
 
                           <div className="grid gap-3 sm:grid-cols-2">
                             <div className="grid gap-2">
-                              <p className="text-sm font-medium text-foreground">Category</p>
+                              <p className="text-sm font-medium text-foreground">{isZh ? "分类" : "Category"}</p>
                               <select
                                 value={editForm.category}
                                 onChange={(event) => handleEditField("category", event.target.value)}
                                 className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                               >
-                                <option value="">Other</option>
-                                <option value="Build">Build</option>
-                                <option value="Learn">Learn</option>
-                                <option value="Move">Move</option>
-                                <option value="Go">Go</option>
-                                <option value="Create">Create</option>
+                                <option value="">{isZh ? "其他" : "Other"}</option>
+                                <option value="Build">{isZh ? "做东西" : "Build"}</option>
+                                <option value="Learn">{isZh ? "学习" : "Learn"}</option>
+                                <option value="Move">{isZh ? "运动" : "Move"}</option>
+                                <option value="Go">{isZh ? "出门" : "Go"}</option>
+                                <option value="Create">{isZh ? "创作" : "Create"}</option>
                               </select>
                             </div>
 
                             <div className="grid gap-2">
-                              <p className="text-sm font-medium text-foreground">Status</p>
+                              <p className="text-sm font-medium text-foreground">{isZh ? "状态" : "Status"}</p>
                               <select
                                 value={editForm.status}
                                 onChange={(event) => handleEditField("status", event.target.value)}
                                 className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
                               >
-                                <option value="open">open</option>
-                                <option value="matched">matched</option>
-                                <option value="paused">paused</option>
-                                <option value="done">done</option>
+                                <option value="open">{isZh ? "开放中" : "open"}</option>
+                                <option value="matched">{isZh ? "已开始" : "matched"}</option>
+                                <option value="paused">{isZh ? "暂停" : "paused"}</option>
+                                <option value="done">{isZh ? "完成" : "done"}</option>
                               </select>
                             </div>
                           </div>
 
                           <div className="grid gap-3 sm:grid-cols-2">
                             <div className="grid gap-2">
-                              <p className="text-sm font-medium text-foreground">Location</p>
+                              <p className="text-sm font-medium text-foreground">{isZh ? "地点" : "Location"}</p>
                               <Input
                                 value={editForm.location}
                                 onChange={(event) => handleEditField("location", event.target.value)}
-                                placeholder="NYC, campus, online..."
+                                placeholder={isZh ? "纽约、校园、线上..." : "NYC, campus, online..."}
                               />
                             </div>
 
                             <div className="grid gap-2">
-                              <p className="text-sm font-medium text-foreground">Time</p>
+                              <p className="text-sm font-medium text-foreground">{isZh ? "时间" : "Time"}</p>
                               <Input
                                 value={editForm.time_availability}
                                 onChange={(event) => handleEditField("time_availability", event.target.value)}
-                                placeholder="Weekends, evenings, this Friday..."
+                                placeholder={isZh ? "周末、晚上、这周五..." : "Weekends, evenings, this Friday..."}
                               />
                             </div>
                           </div>
 
                           <div className="grid gap-3 sm:grid-cols-2">
                             <div className="grid gap-2">
-                              <p className="text-sm font-medium text-foreground">Looking for</p>
+                              <p className="text-sm font-medium text-foreground">{isZh ? "想找谁" : "Looking for"}</p>
                               <Input
                                 value={editForm.looking_for}
                                 onChange={(event) => handleEditField("looking_for", event.target.value)}
-                                placeholder="Gym partner, designer, study buddy..."
+                                placeholder={isZh ? "健身搭子、设计师、学习搭子..." : "Gym partner, designer, study buddy..."}
                               />
                             </div>
 
                             <div className="grid gap-2">
-                              <p className="text-sm font-medium text-foreground">Commitment</p>
+                              <p className="text-sm font-medium text-foreground">{isZh ? "投入程度" : "Commitment"}</p>
                               <Input
                                 value={editForm.commitment}
                                 onChange={(event) => handleEditField("commitment", event.target.value)}
-                                placeholder="One-time, weekly, flexible..."
+                                placeholder={isZh ? "一次、每周、灵活..." : "One-time, weekly, flexible..."}
                               />
                             </div>
                           </div>
 
                           <div className="grid gap-2">
-                            <p className="text-sm font-medium text-foreground">Vibe</p>
+                            <p className="text-sm font-medium text-foreground">{isZh ? "氛围" : "Vibe"}</p>
                             <Input
                               value={editForm.vibe}
                               onChange={(event) => handleEditField("vibe", event.target.value)}
-                              placeholder="Chill, focused, experimental..."
+                              placeholder={isZh ? "轻松、专注、试试看..." : "Chill, focused, experimental..."}
                             />
                           </div>
                         </div>
 
                         {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
                         <DialogFooter>
-                          <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                          <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>{isZh ? "取消" : "Cancel"}</Button>
                           <Button onClick={handleSaveSpark} disabled={isSavingSpark}>
                             {isSavingSpark ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Save Spark
+                            {isZh ? "保存 Spark" : "Save Spark"}
                           </Button>
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
                     <Button asChild className="w-full" variant="outline">
-                      <Link href="/teams?view=applications">Review interests</Link>
+                      <Link href="/teams?view=applications">{isZh ? "查看感兴趣的人" : "Review interests"}</Link>
                     </Button>
                     <Button
                       className="w-full"
@@ -606,7 +657,7 @@ export default function SparkDetailPage() {
                       ) : (
                         <MessageSquare className="mr-2 h-4 w-4" />
                       )}
-                      Open Workspace
+                      {isZh ? "打开工作区" : "Open Workspace"}
                     </Button>
                     <Button
                       className="w-full"
@@ -619,7 +670,7 @@ export default function SparkDetailPage() {
                       ) : (
                         <Archive className="mr-2 h-4 w-4" />
                       )}
-                      Archive Spark
+                      {isZh ? "归档 Spark" : "Archive Spark"}
                     </Button>
                     {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
                   </div>
@@ -636,25 +687,25 @@ export default function SparkDetailPage() {
                         )}
                         <p className="text-sm font-medium">
                           {existingInterest.status === "accepted"
-                            ? "Matched"
+                            ? isZh ? "已匹配" : "Matched"
                             : existingInterest.status === "declined"
-                              ? "Interest closed"
-                              : "Interest sent"}
+                              ? isZh ? "回应已关闭" : "Interest closed"
+                              : isZh ? "已发送兴趣" : "Interest sent"}
                         </p>
                       </div>
                       <p className="mt-2 text-xs leading-5 text-muted-foreground">
                         {existingInterest.status === "accepted"
-                          ? "You were accepted. Continue this Spark in the workspace."
+                          ? isZh ? "你已被接受。可以在工作区继续这个 Spark。" : "You were accepted. Continue this Spark in the workspace."
                           : existingInterest.status === "declined"
-                            ? "This response was declined."
-                            : "The owner can review your note and accept you into the workspace."}
+                            ? isZh ? "这次回应没有通过。" : "This response was declined."
+                            : isZh ? "发起人会查看你的说明，并决定是否邀请你进入工作区。" : "The owner can review your note and accept you into the workspace."}
                       </p>
                     </div>
                     {existingInterest.status === "accepted" && matchedTeam?.id && (
                       <Button asChild className="w-full">
                         <Link href={`/team/${matchedTeam.id}`}>
                           <MessageSquare className="mr-2 h-4 w-4" />
-                          Open Workspace
+                          {isZh ? "打开工作区" : "Open Workspace"}
                         </Link>
                       </Button>
                     )}
@@ -664,34 +715,34 @@ export default function SparkDetailPage() {
                     <DialogTrigger asChild>
                       <Button className="w-full">
                         <Send className="mr-2 h-4 w-4" />
-                        I'm interested
+                        {isZh ? "我感兴趣" : "I'm interested"}
                       </Button>
                     </DialogTrigger>
                     <DialogContent>
                       <DialogHeader>
-                        <DialogTitle>Send interest</DialogTitle>
+                        <DialogTitle>{isZh ? "发送兴趣" : "Send interest"}</DialogTitle>
                         <DialogDescription>
-                          Keep it short. Say why this sounds fun or useful to you.
+                          {isZh ? "简单说说为什么你想加入。" : "Keep it short. Say why this sounds fun or useful to you."}
                         </DialogDescription>
                       </DialogHeader>
                       <Textarea
                         value={message}
                         onChange={(event) => setMessage(event.target.value)}
-                        placeholder="I’d be down for this because..."
+                        placeholder={isZh ? "我想加入是因为..." : "I’d be down for this because..."}
                       />
                       {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
                       <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>{isZh ? "取消" : "Cancel"}</Button>
                         <Button onClick={handleInterest} disabled={isSendingInterest}>
                           {isSendingInterest ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                          Send
+                          {isZh ? "发送" : "Send"}
                         </Button>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
                 ) : (
                   <Button asChild className="w-full">
-                    <Link href={`/auth/login?redirect=/project/${id}`}>Sign in to respond</Link>
+                    <Link href={`/auth/login?redirect=/project/${id}`}>{isZh ? "登录后回应" : "Sign in to respond"}</Link>
                   </Button>
                 )}
               </CardContent>

@@ -132,19 +132,24 @@
 .home-art-title-emphasis {
   position: relative;
   display: inline-block;
-  font-family: Georgia, "Times New Roman", serif;
+  padding: 0 0.04em;
+  font-family: "Snell Roundhand", "Apple Chancery", "Kaiti SC", "STKaiti", "KaiTi", "Songti SC", Georgia, "Times New Roman", serif;
   font-style: italic;
-  font-weight: 700;
+  font-weight: 800;
   color: transparent;
   background:
     linear-gradient(
       135deg,
       color-mix(in oklab, var(--primary) 92%, black 8%),
-      color-mix(in oklab, var(--chart-2) 82%, black 4%)
+      color-mix(in oklab, var(--chart-2) 72%, black 4%),
+      color-mix(in oklab, var(--chart-4) 64%, white 10%)
     );
   background-clip: text;
   -webkit-background-clip: text;
-  text-shadow: 0 16px 34px color-mix(in oklab, var(--primary) 16%, transparent);
+  text-shadow:
+    0 1px 0 color-mix(in oklab, var(--background) 76%, transparent),
+    0 18px 36px color-mix(in oklab, var(--primary) 18%, transparent);
+  transform: rotate(-2deg);
 }
 
 .home-art-title-emphasis::after {

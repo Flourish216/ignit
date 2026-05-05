@@ -25,16 +25,53 @@ interface IntentBreakdown {
   status: string
 }
 
-const intentFields: Array<{ key: keyof IntentBreakdown; label: string }> = [
-  { key: "category", label: "Category" },
-  { key: "location", label: "Location" },
-  { key: "time_availability", label: "Time" },
-  { key: "looking_for", label: "Looking for" },
-  { key: "vibe", label: "Vibe" },
-  { key: "commitment", label: "Commitment" },
+const intentFields: Array<{ key: keyof IntentBreakdown; label: string; zhLabel: string }> = [
+  { key: "category", label: "Category", zhLabel: "分类" },
+  { key: "location", label: "Location", zhLabel: "地点" },
+  { key: "time_availability", label: "Time", zhLabel: "时间" },
+  { key: "looking_for", label: "Looking for", zhLabel: "想找谁" },
+  { key: "vibe", label: "Vibe", zhLabel: "氛围" },
+  { key: "commitment", label: "Commitment", zhLabel: "投入程度" },
 ]
 
-const getPublishErrorMessage = (error: unknown) => {
+const categoryZh: Record<string, string> = {
+  Build: "做东西",
+  Learn: "学习",
+  Move: "运动",
+  Go: "出门",
+  Create: "创作",
+  Other: "其他",
+}
+
+const statusZh: Record<string, string> = {
+  open: "开放中",
+  recruiting: "开放中",
+  matched: "已开始",
+  in_progress: "已开始",
+}
+
+const commonZh: Record<string, string> = {
+  Flexible: "灵活",
+  Online: "线上",
+  Campus: "校园",
+  Local: "本地",
+  "Someone interested": "感兴趣的人",
+  "Low-pressure": "轻松一点",
+  "One-time": "一次",
+  recurring: "持续",
+  casual: "轻松",
+  focused: "专注",
+}
+
+const getVisibleValue = (key: keyof IntentBreakdown, value: string | undefined, isZh: boolean) => {
+  if (!value) return isZh ? "灵活" : "Flexible"
+  if (!isZh) return value
+  if (key === "category") return categoryZh[value] || value
+  if (key === "status") return statusZh[value] || value
+  return commonZh[value] || value
+}
+
+const getPublishErrorMessage = (error: unknown, isZh = false) => {
   if (error instanceof Error && error.message) return error.message
   if (error && typeof error === "object") {
     const errorObject = error as Record<string, unknown>
@@ -45,7 +82,7 @@ const getPublishErrorMessage = (error: unknown) => {
       typeof errorObject.code === "string" ? errorObject.code : null,
     ].filter(Boolean).join(" ")
   }
-  return "Failed to publish Spark"
+  return isZh ? "发布失败，请再试一次。" : "Failed to publish Spark"
 }
 
 const shouldRetryTeamWithoutCreatedBy = (error: unknown) => {
@@ -57,7 +94,8 @@ function CreateIntentContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const supabase = createClient()
-  const { t } = useLanguage()
+  const { language, t } = useLanguage()
+  const isZh = language === "zh"
 
   const initialIdea = searchParams.get("idea") || ""
   const [idea, setIdea] = useState(initialIdea)
@@ -126,11 +164,11 @@ function CreateIntentContent() {
 
       if (!response.ok) {
         const errorText = await response.text()
-        throw new Error(errorText || "Failed to structure Spark")
+        throw new Error(errorText || (isZh ? "Igni 暂时没整理成功，请再试一次。" : "Failed to structure Spark"))
       }
 
       const data = await response.json()
-      if (!data.result) throw new Error("Invalid response format")
+      if (!data.result) throw new Error(isZh ? "返回内容有点乱，请重新生成一次。" : "Invalid response format")
       if (structureRequestRef.current !== requestId) return
       setIdea(promptText)
       setEditableIdea(promptText)
@@ -138,7 +176,7 @@ function CreateIntentContent() {
       setIntent(data.result)
     } catch (err) {
       if (structureRequestRef.current !== requestId) return
-      setError(err instanceof Error ? err.message : "Something went wrong")
+      setError(err instanceof Error ? err.message : isZh ? "出错了，请再试一次。" : "Something went wrong")
     } finally {
       if (structureRequestRef.current === requestId) setIsStructuring(false)
       if (structureRequestRef.current === requestId && loadingIntervalRef.current) {
@@ -158,7 +196,7 @@ function CreateIntentContent() {
   const handlePublish = async () => {
     if (!user || !intent) return
     if (hasUnstructuredChanges) {
-      setError("Regenerate the Spark after editing the idea, then publish.")
+      setError(isZh ? "你修改了想法，请先重新生成 Spark，再发布。" : "Regenerate the Spark after editing the idea, then publish.")
       return
     }
 
@@ -186,7 +224,7 @@ function CreateIntentContent() {
         .from("teams")
         .insert({
           project_id: data.id,
-          name: `${intent.title} Workspace`,
+          name: `${intent.title} 工作区`,
           created_by: user.id,
         })
         .select("id")
@@ -197,7 +235,7 @@ function CreateIntentContent() {
           .from("teams")
           .insert({
             project_id: data.id,
-            name: `${intent.title} Workspace`,
+            name: `${intent.title} 工作区`,
           })
           .select("id")
           .single()
@@ -207,7 +245,7 @@ function CreateIntentContent() {
       }
 
       if (teamError) throw teamError
-      if (!team?.id) throw new Error("Spark was created, but workspace could not be opened.")
+      if (!team?.id) throw new Error(isZh ? "Spark 已创建，但工作区没打开成功。" : "Spark was created, but workspace could not be opened.")
 
       await supabase
         .from("team_members")
@@ -224,7 +262,7 @@ function CreateIntentContent() {
       router.push(`/team/${team.id}`)
     } catch (err) {
       console.error("Failed to publish Spark:", err)
-      setError(getPublishErrorMessage(err))
+      setError(getPublishErrorMessage(err, isZh))
     } finally {
       setIsPublishing(false)
     }
@@ -327,8 +365,8 @@ function CreateIntentContent() {
             <Card className="border-primary/20">
               <CardHeader>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge>{intent.category || "Other"}</Badge>
-                  <Badge variant="outline">{intent.status || "open"}</Badge>
+                  <Badge>{getVisibleValue("category", intent.category || "Other", isZh)}</Badge>
+                  <Badge variant="outline">{getVisibleValue("status", intent.status || "open", isZh)}</Badge>
                 </div>
                 <CardTitle className="pt-2 text-2xl">{intent.title}</CardTitle>
                 <CardDescription className="text-base">{intent.description}</CardDescription>
@@ -336,8 +374,8 @@ function CreateIntentContent() {
               <CardContent className="grid gap-3 sm:grid-cols-2">
                 {intentFields.map((field) => (
                   <div key={field.key} className="rounded-lg border border-border bg-background p-3">
-                    <p className="text-xs font-medium uppercase text-muted-foreground">{field.label}</p>
-                    <p className="mt-1 text-sm text-foreground">{intent[field.key] || "Flexible"}</p>
+                    <p className="text-xs font-medium uppercase text-muted-foreground">{isZh ? field.zhLabel : field.label}</p>
+                    <p className="mt-1 text-sm text-foreground">{getVisibleValue(field.key, intent[field.key], isZh)}</p>
                   </div>
                 ))}
               </CardContent>
@@ -357,7 +395,7 @@ function CreateIntentContent() {
                 />
                 {hasUnstructuredChanges && (
                   <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-primary">
-                    You changed the idea. Regenerate the Spark before publishing so the card matches this draft.
+                    {isZh ? "你修改了想法。请先重新生成 Spark，让卡片和这版草稿对上，再发布。" : "You changed the idea. Regenerate the Spark before publishing so the card matches this draft."}
                   </p>
                 )}
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">

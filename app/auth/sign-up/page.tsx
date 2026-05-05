@@ -14,8 +14,11 @@ import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { useLanguage } from '@/lib/i18n/context'
 
 export default function Page() {
+  const { language } = useLanguage()
+  const isZh = language === 'zh'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [repeatPassword, setRepeatPassword] = useState('')
@@ -30,7 +33,7 @@ export default function Page() {
     setError(null)
 
     if (password !== repeatPassword) {
-      setError('Passwords do not match')
+      setError(isZh ? '两次密码不一样。' : 'Passwords do not match')
       setIsLoading(false)
       return
     }
@@ -48,7 +51,7 @@ export default function Page() {
       if (error) throw error
       router.push('/auth/sign-up-success')
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : 'An error occurred')
+      setError(error instanceof Error ? error.message : isZh ? '注册失败，请再试一次。' : 'An error occurred')
     } finally {
       setIsLoading(false)
     }
@@ -60,14 +63,14 @@ export default function Page() {
         <div className="flex flex-col gap-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl">Sign up</CardTitle>
-              <CardDescription>Create a new account</CardDescription>
+              <CardTitle className="text-2xl">{isZh ? '创建账号' : 'Sign up'}</CardTitle>
+              <CardDescription>{isZh ? '用 Ignit 记录想做的事，找到一起开始的人。' : 'Create a new account'}</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSignUp}>
                 <div className="flex flex-col gap-6">
                   <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">{isZh ? '邮箱' : 'Email'}</Label>
                     <Input
                       id="email"
                       type="email"
@@ -79,7 +82,7 @@ export default function Page() {
                   </div>
                   <div className="grid gap-2">
                     <div className="flex items-center">
-                      <Label htmlFor="password">Password</Label>
+                      <Label htmlFor="password">{isZh ? '密码' : 'Password'}</Label>
                     </div>
                     <Input
                       id="password"
@@ -91,7 +94,7 @@ export default function Page() {
                   </div>
                   <div className="grid gap-2">
                     <div className="flex items-center">
-                      <Label htmlFor="repeat-password">Repeat Password</Label>
+                      <Label htmlFor="repeat-password">{isZh ? '再输入一次密码' : 'Repeat Password'}</Label>
                     </div>
                     <Input
                       id="repeat-password"
@@ -103,16 +106,16 @@ export default function Page() {
                   </div>
                   {error && <p className="text-sm text-red-500">{error}</p>}
                   <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Creating an account...' : 'Sign up'}
+                    {isLoading ? isZh ? '创建中...' : 'Creating an account...' : isZh ? '创建账号' : 'Sign up'}
                   </Button>
                 </div>
                 <div className="mt-4 text-center text-sm">
-                  Already have an account?{' '}
+                  {isZh ? '已经有账号？' : 'Already have an account?'}{' '}
                   <Link
                     href="/auth/login"
                     className="underline underline-offset-4"
                   >
-                    Login
+                    {isZh ? '登录' : 'Login'}
                   </Link>
                 </div>
               </form>

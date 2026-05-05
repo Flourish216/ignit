@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { MapPin, Sparkles, UserRound } from "lucide-react"
 import Link from "next/link"
+import { useLanguage } from "@/lib/i18n/context"
 
 export interface MatchPerson {
   id: string
@@ -29,11 +30,13 @@ interface MatchCardProps {
 }
 
 export function MatchCard({ person, compact = false }: MatchCardProps) {
+  const { language } = useLanguage()
+  const isZh = language === "zh"
   const reasons = person.matchReasons?.length
     ? person.matchReasons
     : [
-        ...(person.matchedSkills?.length ? [`${person.matchedSkills.length} skill match`] : []),
-        ...(person.availability ? [`Available: ${person.availability.replace(/-/g, " ")}`] : []),
+        ...(person.matchedSkills?.length ? [isZh ? `${person.matchedSkills.length} 个技能对得上` : `${person.matchedSkills.length} skill match`] : []),
+        ...(person.availability ? [isZh ? `时间：${person.availability.replace(/-/g, " ")}` : `Available: ${person.availability.replace(/-/g, " ")}`] : []),
       ]
 
   return (
@@ -50,7 +53,7 @@ export function MatchCard({ person, compact = false }: MatchCardProps) {
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-foreground">
-                  {person.full_name || "Anonymous builder"}
+                  {person.full_name || (isZh ? "匿名用户" : "Anonymous builder")}
                 </p>
                 {person.bio && (
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{person.bio}</p>
@@ -97,7 +100,7 @@ export function MatchCard({ person, compact = false }: MatchCardProps) {
 
             {!compact && (
               <Button asChild variant="outline" size="sm" className="mt-4 w-full">
-                <Link href={`/profile?builder=${person.id}`}>View builder profile</Link>
+                <Link href={`/profile?builder=${person.id}`}>{isZh ? "查看主页" : "View builder profile"}</Link>
               </Button>
             )}
           </div>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { formatDistanceToNow } from "date-fns"
+import { zhCN } from "date-fns/locale"
 import useSWR, { mutate } from "swr"
 import {
   ArrowLeft,
@@ -34,6 +35,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { createClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/i18n/context"
 
 type SparkBreakdown = {
   title?: string
@@ -125,6 +127,21 @@ const igniPrompts: Array<{ mode: IgniMode; label: string; prompt: string }> = [
   { mode: "recap", label: "Recap chat", prompt: "@igni Summarize the recent chat and list decisions, open questions, and next actions." },
 ]
 
+const igniModeZh: Record<IgniMode, string> = {
+  ask: "提问",
+  plan: "计划",
+  brainstorm: "想法",
+  research: "查证",
+  recap: "总结",
+}
+
+const igniPromptZh: Record<string, { label: string; prompt: string }> = {
+  "Plan this week": { label: "规划本周", prompt: "@igni 帮我们决定这周第一个具体动作。" },
+  "Give options": { label: "给几个方向", prompt: "@igni 给我们几个开始这个 Spark 的方式，并说明各自取舍。" },
+  "What to check": { label: "要确认什么", prompt: "@igni 开始前我们需要查证或确认哪些事情？" },
+  "Recap chat": { label: "总结聊天", prompt: "@igni 总结最近聊天里的决定、问题和下一步。" },
+}
+
 const igniReplyPrefix = "__igni_reply__\n"
 
 const getInitial = (name?: string | null) => name?.trim()?.[0]?.toUpperCase() || "I"
@@ -134,6 +151,56 @@ const getStatusLabel = (status?: string, sparkStatus?: string) => {
   if (status === "recruiting") return "open"
   if (status === "in_progress") return "matched"
   return status || "open"
+}
+
+const statusZh: Record<string, string> = {
+  open: "开放中",
+  matched: "已开始",
+  recruiting: "开放中",
+  in_progress: "已开始",
+  completed: "完成",
+  archived: "已归档",
+}
+
+const categoryZh: Record<string, string> = {
+  Build: "做东西",
+  Learn: "学习",
+  Move: "运动",
+  Go: "出门",
+  Create: "创作",
+  Other: "其他",
+}
+
+const roleZh: Record<string, string> = {
+  owner: "发起人",
+  Interested: "感兴趣",
+}
+
+const commonZh: Record<string, string> = {
+  Flexible: "灵活",
+  Online: "线上",
+  Campus: "校园",
+  Local: "本地",
+  "Someone interested": "感兴趣的人",
+  "Low-pressure": "轻松一点",
+  "One-time": "一次",
+  recurring: "持续",
+  casual: "轻松",
+  focused: "专注",
+}
+
+const getVisibleStatus = (status: string, isZh: boolean) =>
+  isZh ? statusZh[status] || status : status
+
+const getVisibleCategory = (category: string | undefined, isZh: boolean) =>
+  isZh ? categoryZh[category || "Other"] || category || "其他" : category
+
+const getVisibleRole = (role: string | null | undefined, isZh: boolean) =>
+  isZh ? roleZh[role || "Interested"] || role || "感兴趣" : role || "Interested"
+
+const getVisibleText = (value: string | undefined, fallback: string, isZh: boolean) => {
+  const text = value || fallback
+  return isZh ? commonZh[text] || text : text
 }
 
 const firstRelation = <T,>(relation: T | T[] | null | undefined) =>
@@ -246,6 +313,8 @@ function IgniMarkdown({ content }: { content: string }) {
 export default function TeamWorkspacePage() {
   const params = useParams()
   const router = useRouter()
+  const { language } = useLanguage()
+  const isZh = language === "zh"
   const teamId = params.id as string
   const supabase = createClient()
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -416,20 +485,20 @@ export default function TeamWorkspacePage() {
   const canSendMessage = Boolean(user?.id && projectId && team && (isWorkspaceMember || isMembershipChecking))
   const details = (team?.project?.ai_breakdown || {}) as SparkBreakdown
   const sparkTitle = details.title || team?.project?.title || team?.name || "Spark"
-  const sparkDescription = details.description || team?.project?.description || "No brief yet."
+  const sparkDescription = details.description || team?.project?.description || (isZh ? "还没有简介。" : "No brief yet.")
   const sparkStatus = getStatusLabel(team?.project?.status, details.status)
   const visibleMembers = members || []
   const visibleMemberIds = new Set(visibleMembers.map((member) => member.user_id))
   const memberCount = visibleMembers.length + (ownerProfile && !visibleMemberIds.has(ownerProfile.id) ? 1 : 0)
   const firstMove = details.time_availability
-    ? `Find a time: ${details.time_availability}`
+    ? isZh ? `先定时间：${details.time_availability}` : `Find a time: ${details.time_availability}`
     : details.looking_for
-      ? `Start with the person you were looking for: ${details.looking_for}`
-      : "Agree on the first small thing you can do together."
+      ? isZh ? `先明确你想找的人：${details.looking_for}` : `Start with the person you were looking for: ${details.looking_for}`
+      : isZh ? "先决定一个你们可以一起完成的小动作。" : "Agree on the first small thing you can do together."
   const startSteps = [
-    details.looking_for ? `Say what kind of ${details.looking_for} would help most.` : "Say what kind of person would help most.",
-    details.time_availability ? `Pick a first time window: ${details.time_availability}.` : "Pick one time window for the first conversation.",
-    "Decide one tiny action you can finish before the next check-in.",
+    details.looking_for ? isZh ? `说清楚什么样的 ${details.looking_for} 最有帮助。` : `Say what kind of ${details.looking_for} would help most.` : isZh ? "说清楚你最想找什么样的人。" : "Say what kind of person would help most.",
+    details.time_availability ? isZh ? `先选一个时间窗口：${details.time_availability}。` : `Pick a first time window: ${details.time_availability}.` : isZh ? "先选一个第一次沟通的时间。" : "Pick one time window for the first conversation.",
+    isZh ? "定一个下次同步前能完成的小动作。" : "Decide one tiny action you can finish before the next check-in.",
   ]
   const currentMember = visibleMembers.find((member) => member.user_id === user?.id)
   const currentUserProfile: Profile | null = user
@@ -478,7 +547,7 @@ export default function TeamWorkspacePage() {
         mutateMembers()
       } catch (error) {
         console.error("Failed to repair workspace membership:", error)
-        setSetupError(error instanceof Error ? error.message : "Could not repair workspace access.")
+        setSetupError(error instanceof Error ? error.message : isZh ? "工作区权限修复失败。" : "Could not repair workspace access.")
       } finally {
         setIsRepairingWorkspace(false)
       }
@@ -510,7 +579,7 @@ export default function TeamWorkspacePage() {
 
       const data = await response.json()
       const answer = typeof data.answer === "string" ? data.answer.trim() : ""
-      if (!answer) throw new Error("Igni returned an empty answer")
+      if (!answer) throw new Error(isZh ? "Igni 没有返回内容。" : "Igni returned an empty answer")
 
       const { data: insertedReply, error } = await supabase
         .from("messages")
@@ -531,7 +600,7 @@ export default function TeamWorkspacePage() {
       }
       mutateMessages()
     } catch (error) {
-      setIgniError(error instanceof Error ? error.message : "Could not ask Igni")
+      setIgniError(error instanceof Error ? error.message : isZh ? "Igni 暂时没回复成功。" : "Could not ask Igni")
     } finally {
       setIsAskingIgni(false)
     }
@@ -576,7 +645,7 @@ export default function TeamWorkspacePage() {
       }
     } catch (error) {
       console.error("Failed to send message:", error)
-      setSendError(error instanceof Error ? error.message : "Could not send message.")
+      setSendError(error instanceof Error ? error.message : isZh ? "消息发送失败。" : "Could not send message.")
       setMessageInput(content)
     } finally {
       setIsSending(false)
@@ -601,12 +670,12 @@ export default function TeamWorkspacePage() {
       <div className="min-h-screen bg-background lg:pl-64">
         <Navigation />
         <main className="mx-auto max-w-2xl px-4 py-16 text-center">
-          <h1 className="text-2xl font-semibold text-foreground">Workspace not found</h1>
+          <h1 className="text-2xl font-semibold text-foreground">{isZh ? "找不到工作区" : "Workspace not found"}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            This workspace may have been removed or you may not have access.
+            {isZh ? "这个工作区可能已经被移除，或者你没有访问权限。" : "This workspace may have been removed or you may not have access."}
           </p>
           <Button asChild className="mt-5">
-            <Link href="/teams">Back to My Sparks</Link>
+            <Link href="/teams">{isZh ? "回到我的 Spark" : "Back to My Sparks"}</Link>
           </Button>
         </main>
       </div>
@@ -626,16 +695,16 @@ export default function TeamWorkspacePage() {
                 className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="h-4 w-4" />
-                My Sparks
+                {isZh ? "我的 Spark" : "My Sparks"}
               </Link>
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <Badge variant="secondary" className="gap-1">
                   <Sparkles className="h-3.5 w-3.5" />
-                  Workspace
+                  {isZh ? "工作区" : "Workspace"}
                 </Badge>
-                <Badge variant="outline" className="capitalize">{sparkStatus}</Badge>
-                {details.category && <Badge>{details.category}</Badge>}
+                <Badge variant="outline" className="capitalize">{getVisibleStatus(sparkStatus, isZh)}</Badge>
+                {details.category && <Badge>{getVisibleCategory(details.category, isZh)}</Badge>}
               </div>
 
               <h1 className="mt-3 line-clamp-2 text-lg font-semibold text-foreground">{sparkTitle}</h1>
@@ -643,24 +712,24 @@ export default function TeamWorkspacePage() {
 
               <div className="mt-4 grid gap-2 text-xs text-muted-foreground">
                 <div className="rounded-md bg-secondary/60 p-2">
-                  <span className="font-medium text-foreground">Looking for: </span>
-                  {details.looking_for || "Someone interested"}
+                  <span className="font-medium text-foreground">{isZh ? "想找：" : "Looking for: "}</span>
+                  {getVisibleText(details.looking_for, isZh ? "感兴趣的人" : "Someone interested", isZh)}
                 </div>
                 <div className="rounded-md bg-secondary/60 p-2">
-                  <span className="font-medium text-foreground">Time: </span>
-                  {details.time_availability || "Flexible"}
+                  <span className="font-medium text-foreground">{isZh ? "时间：" : "Time: "}</span>
+                  {getVisibleText(details.time_availability, isZh ? "灵活" : "Flexible", isZh)}
                 </div>
               </div>
 
               <Button asChild variant="outline" size="sm" className="mt-4 w-full">
-                <Link href={`/project/${team.project_id}`}>View Spark Card</Link>
+                <Link href={`/project/${team.project_id}`}>{isZh ? "查看 Spark 卡片" : "View Spark Card"}</Link>
               </Button>
             </section>
 
             <section className="rounded-lg border border-primary/20 bg-primary/5 p-4">
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <ClipboardList className="h-4 w-4 text-primary" />
-                Start panel
+                {isZh ? "开始面板" : "Start panel"}
               </div>
               <p className="mt-2 text-sm leading-6 text-foreground">{firstMove}</p>
               <div className="mt-3 space-y-2">
@@ -678,10 +747,10 @@ export default function TeamWorkspacePage() {
                 className="mt-3 w-full bg-background/80"
                 onClick={() => {
                   setIgniMode("plan")
-                  setMessageInput("@igni Turn our Spark brief into the next 3 concrete steps. Keep it short and assign what to decide first.")
+                  setMessageInput(isZh ? "@igni 把这个 Spark 简介整理成接下来 3 个具体动作，保持简短，并告诉我们先决定什么。" : "@igni Turn our Spark brief into the next 3 concrete steps. Keep it short and assign what to decide first.")
                 }}
               >
-                Ask Igni for next steps
+                {isZh ? "让 Igni 建议下一步" : "Ask Igni for next steps"}
               </Button>
             </section>
           </aside>
@@ -697,7 +766,7 @@ export default function TeamWorkspacePage() {
                     general
                   </h2>
                   <p className="truncate text-xs text-muted-foreground">
-                    Chat, ask @igni, and decide what to do next.
+                    {isZh ? "聊天、@igni 提问，然后决定下一步。" : "Chat, ask @igni, and decide what to do next."}
                   </p>
                 </div>
               </div>
@@ -706,30 +775,30 @@ export default function TeamWorkspacePage() {
                 {isAskingIgni && (
                   <Badge variant="secondary" className="hidden gap-1 sm:inline-flex">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    Igni thinking
+                    {isZh ? "Igni 思考中" : "Igni thinking"}
                   </Badge>
                 )}
                 <Sheet>
                   <SheetTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2">
                       <Sparkles className="h-4 w-4" />
-                      Brief
+                      {isZh ? "简介" : "Brief"}
                     </Button>
                   </SheetTrigger>
                   <SheetContent className="overflow-y-auto">
                     <SheetHeader>
-                      <SheetTitle>Spark brief</SheetTitle>
-                      <SheetDescription>The context this workspace is starting from.</SheetDescription>
+                      <SheetTitle>{isZh ? "Spark 简介" : "Spark brief"}</SheetTitle>
+                      <SheetDescription>{isZh ? "这个工作区从这些信息开始。" : "The context this workspace is starting from."}</SheetDescription>
                     </SheetHeader>
                     <div className="space-y-4 px-4">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge variant="secondary" className="gap-1">
                             <Sparkles className="h-3.5 w-3.5" />
-                            Workspace
+                            {isZh ? "工作区" : "Workspace"}
                           </Badge>
-                          <Badge variant="outline" className="capitalize">{sparkStatus}</Badge>
-                          {details.category && <Badge>{details.category}</Badge>}
+                          <Badge variant="outline" className="capitalize">{getVisibleStatus(sparkStatus, isZh)}</Badge>
+                          {details.category && <Badge>{getVisibleCategory(details.category, isZh)}</Badge>}
                         </div>
                         <h3 className="mt-3 text-lg font-semibold text-foreground">{sparkTitle}</h3>
                         <p className="mt-2 text-sm leading-6 text-muted-foreground">{sparkDescription}</p>
@@ -737,29 +806,29 @@ export default function TeamWorkspacePage() {
 
                       <div className="grid gap-2 text-sm">
                         <div className="rounded-md bg-secondary/60 p-3">
-                          <span className="font-medium text-foreground">Looking for: </span>
-                          <span className="text-muted-foreground">{details.looking_for || "Someone interested"}</span>
+                          <span className="font-medium text-foreground">{isZh ? "想找：" : "Looking for: "}</span>
+                          <span className="text-muted-foreground">{getVisibleText(details.looking_for, isZh ? "感兴趣的人" : "Someone interested", isZh)}</span>
                         </div>
                         <div className="rounded-md bg-secondary/60 p-3">
-                          <span className="font-medium text-foreground">Time: </span>
-                          <span className="text-muted-foreground">{details.time_availability || "Flexible"}</span>
+                          <span className="font-medium text-foreground">{isZh ? "时间：" : "Time: "}</span>
+                          <span className="text-muted-foreground">{getVisibleText(details.time_availability, isZh ? "灵活" : "Flexible", isZh)}</span>
                         </div>
                         {details.location && (
                           <div className="rounded-md bg-secondary/60 p-3">
-                            <span className="font-medium text-foreground">Location: </span>
-                            <span className="text-muted-foreground">{details.location}</span>
+                            <span className="font-medium text-foreground">{isZh ? "地点：" : "Location: "}</span>
+                            <span className="text-muted-foreground">{getVisibleText(details.location, "", isZh)}</span>
                           </div>
                         )}
                         {details.vibe && (
                           <div className="rounded-md bg-secondary/60 p-3">
-                            <span className="font-medium text-foreground">Vibe: </span>
-                            <span className="text-muted-foreground">{details.vibe}</span>
+                            <span className="font-medium text-foreground">{isZh ? "氛围：" : "Vibe: "}</span>
+                            <span className="text-muted-foreground">{getVisibleText(details.vibe, "", isZh)}</span>
                           </div>
                         )}
                       </div>
 
                       <Button asChild variant="outline" className="w-full">
-                        <Link href={`/project/${team.project_id}`}>View Spark Card</Link>
+                        <Link href={`/project/${team.project_id}`}>{isZh ? "查看 Spark 卡片" : "View Spark Card"}</Link>
                       </Button>
                     </div>
                   </SheetContent>
@@ -768,13 +837,13 @@ export default function TeamWorkspacePage() {
                   <SheetTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2">
                       <ClipboardList className="h-4 w-4" />
-                      Start
+                      {isZh ? "开始" : "Start"}
                     </Button>
                   </SheetTrigger>
                   <SheetContent className="overflow-y-auto">
                     <SheetHeader>
-                      <SheetTitle>Start panel</SheetTitle>
-                      <SheetDescription>Keep the next move small enough to actually do.</SheetDescription>
+                      <SheetTitle>{isZh ? "开始面板" : "Start panel"}</SheetTitle>
+                      <SheetDescription>{isZh ? "把下一步压小，小到真的能做。" : "Keep the next move small enough to actually do."}</SheetDescription>
                     </SheetHeader>
                     <div className="space-y-4 px-4">
                       <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
@@ -793,10 +862,10 @@ export default function TeamWorkspacePage() {
                         className="w-full"
                         onClick={() => {
                           setIgniMode("plan")
-                          setMessageInput("@igni Turn our Spark brief into the next 3 concrete steps. Keep it short and assign what to decide first.")
+                          setMessageInput(isZh ? "@igni 把这个 Spark 简介整理成接下来 3 个具体动作，保持简短，并告诉我们先决定什么。" : "@igni Turn our Spark brief into the next 3 concrete steps. Keep it short and assign what to decide first.")
                         }}
                       >
-                        Ask Igni for next steps
+                        {isZh ? "让 Igni 建议下一步" : "Ask Igni for next steps"}
                       </Button>
                     </div>
                   </SheetContent>
@@ -805,7 +874,7 @@ export default function TeamWorkspacePage() {
                   <SheetTrigger asChild>
                     <Button variant="outline" size="sm" className="gap-2">
                       <Users className="h-4 w-4" />
-                      People
+                      {isZh ? "成员" : "People"}
                       <span className="rounded-full bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
                         {memberCount}
                       </span>
@@ -813,8 +882,8 @@ export default function TeamWorkspacePage() {
                   </SheetTrigger>
                   <SheetContent>
                     <SheetHeader>
-                      <SheetTitle>People</SheetTitle>
-                      <SheetDescription>Members in this Spark workspace.</SheetDescription>
+                      <SheetTitle>{isZh ? "成员" : "People"}</SheetTitle>
+                      <SheetDescription>{isZh ? "这个 Spark 工作区里的成员。" : "Members in this Spark workspace."}</SheetDescription>
                     </SheetHeader>
                     <div className="space-y-3 px-4">
                       {ownerProfile && (
@@ -827,9 +896,9 @@ export default function TeamWorkspacePage() {
                           </Avatar>
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-foreground">
-                              {ownerProfile.full_name || "Owner"}
+                              {ownerProfile.full_name || (isZh ? "发起人" : "Owner")}
                             </p>
-                            <p className="text-xs text-muted-foreground">Started this Spark</p>
+                            <p className="text-xs text-muted-foreground">{isZh ? "发起了这个 Spark" : "Started this Spark"}</p>
                           </div>
                         </div>
                       )}
@@ -844,16 +913,16 @@ export default function TeamWorkspacePage() {
                           </Avatar>
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-foreground">
-                              {member.user?.full_name || "Ignit user"}
+                              {member.user?.full_name || (isZh ? "Ignit 用户" : "Ignit user")}
                             </p>
-                            <p className="truncate text-xs text-muted-foreground">{member.role || "Interested"}</p>
+                            <p className="truncate text-xs text-muted-foreground">{getVisibleRole(member.role, isZh)}</p>
                           </div>
                         </div>
                       ))}
 
                       {!ownerProfile && visibleMembers.length === 0 && (
                         <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-                          No one is in this workspace yet.
+                          {isZh ? "这个工作区还没有其他成员。" : "No one is in this workspace yet."}
                         </p>
                       )}
                     </div>
@@ -865,13 +934,13 @@ export default function TeamWorkspacePage() {
             <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-5">
               {isMembershipChecking && (
                 <div className="mb-4 rounded-lg border border-dashed border-border bg-secondary/40 p-4 text-center">
-                  <p className="text-sm text-muted-foreground">Checking workspace access...</p>
+                  <p className="text-sm text-muted-foreground">{isZh ? "正在检查工作区权限..." : "Checking workspace access..."}</p>
                 </div>
               )}
 
               {!isMembershipChecking && !isWorkspaceMember && (
                 <div className="mb-4 rounded-lg border border-dashed border-border bg-secondary/40 p-4 text-center">
-                  <p className="text-sm text-muted-foreground">This workspace opens after a Spark becomes a Match.</p>
+                  <p className="text-sm text-muted-foreground">{isZh ? "这个 Spark 匹配成功后会开放工作区。" : "This workspace opens after a Spark becomes a Match."}</p>
                 </div>
               )}
 
@@ -904,13 +973,13 @@ export default function TeamWorkspacePage() {
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                             <span className="text-sm font-medium text-foreground">
-                              {messageIsIgni ? "Igni" : message.user?.full_name || "Ignit user"}
+                              {messageIsIgni ? "Igni" : message.user?.full_name || (isZh ? "Ignit 用户" : "Ignit user")}
                             </span>
                             {messageIsIgni && message.user?.full_name && (
-                              <span className="text-xs text-muted-foreground">via {message.user.full_name}</span>
+                              <span className="text-xs text-muted-foreground">{isZh ? "来自" : "via"} {message.user.full_name}</span>
                             )}
                             <span className="text-xs text-muted-foreground">
-                              {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+                              {formatDistanceToNow(new Date(message.created_at), { addSuffix: true, locale: isZh ? zhCN : undefined })}
                             </span>
                           </div>
 
@@ -933,7 +1002,7 @@ export default function TeamWorkspacePage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-foreground">Igni</span>
-                          <span className="text-xs text-muted-foreground">thinking</span>
+                          <span className="text-xs text-muted-foreground">{isZh ? "思考中" : "thinking"}</span>
                         </div>
                         <div className="mt-2 flex gap-1">
                           <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" />
@@ -950,9 +1019,9 @@ export default function TeamWorkspacePage() {
                   <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     <MessageSquare className="h-6 w-6" />
                   </div>
-                  <h3 className="mt-4 text-lg font-semibold text-foreground">Start the workspace</h3>
+                  <h3 className="mt-4 text-lg font-semibold text-foreground">{isZh ? "开始工作区" : "Start the workspace"}</h3>
                   <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-                    Say hello, pick the first tiny step, or type @igni to ask for help.
+                    {isZh ? "先打个招呼，定一个很小的第一步，或者输入 @igni 寻求帮助。" : "Say hello, pick the first tiny step, or type @igni to ask for help."}
                   </p>
                 </div>
               )}
@@ -975,11 +1044,11 @@ export default function TeamWorkspacePage() {
                       }`}
                     >
                       <Icon className="h-3.5 w-3.5" />
-                      {mode.label}
+                      {isZh ? igniModeZh[mode.id] : mode.label}
                     </button>
                   )
                 })}
-                <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">Type @igni to use the selected mode.</span>
+                <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">{isZh ? "输入 @igni 使用当前模式。" : "Type @igni to use the selected mode."}</span>
               </div>
 
               <div className="mb-2 hidden flex-wrap gap-1.5 sm:flex">
@@ -989,12 +1058,12 @@ export default function TeamWorkspacePage() {
                     type="button"
                     onClick={() => {
                       setIgniMode(prompt.mode)
-                      setMessageInput(prompt.prompt)
+                      setMessageInput(isZh ? igniPromptZh[prompt.label]?.prompt || prompt.prompt : prompt.prompt)
                     }}
                     disabled={!canSendMessage || isAskingIgni}
                     className="rounded-full border border-border px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {prompt.label}
+                    {isZh ? igniPromptZh[prompt.label]?.label || prompt.label : prompt.label}
                   </button>
                 ))}
               </div>
@@ -1007,7 +1076,7 @@ export default function TeamWorkspacePage() {
               )}
               {messagesError && (
                 <p className="mb-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                  {messagesError.message || "Could not load messages."}
+                  {messagesError.message || (isZh ? "消息加载失败。" : "Could not load messages.")}
                 </p>
               )}
               {setupError && (
@@ -1020,10 +1089,10 @@ export default function TeamWorkspacePage() {
                   onChange={(event) => setMessageInput(event.target.value)}
                   placeholder={
                     canSendMessage
-                      ? "Message #general or @igni ask anything"
+                      ? isZh ? "发消息到 #general，或 @igni 提问" : "Message #general or @igni ask anything"
                       : isMembershipChecking
-                        ? "Checking workspace access..."
-                        : "Workspace chat opens after a Match"
+                        ? isZh ? "正在检查工作区权限..." : "Checking workspace access..."
+                        : isZh ? "匹配成功后开放聊天" : "Workspace chat opens after a Match"
                   }
                   disabled={!canSendMessage || isSending}
                   className="h-10 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
@@ -1032,7 +1101,7 @@ export default function TeamWorkspacePage() {
                   type="submit"
                   size="icon"
                   disabled={!messageInput.trim() || !canSendMessage || isSending || isAskingIgni}
-                  aria-label="Send message"
+                  aria-label={isZh ? "发送消息" : "Send message"}
                 >
                   {isSending || isAskingIgni ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>

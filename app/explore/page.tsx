@@ -11,14 +11,21 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { createClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/i18n/context"
 
-const statusFilters = [
-  { value: "all", label: "All" },
-  { value: "recruiting", label: "Open" },
-  { value: "in_progress", label: "Matched" },
-]
+const statusFilterLabels = {
+  en: { all: "All", recruiting: "Open", in_progress: "Matched" },
+  zh: { all: "全部", recruiting: "开放中", in_progress: "已开始" },
+}
 
 const categories = ["Build", "Learn", "Move", "Go", "Create"]
+const categoryLabels: Record<string, string> = {
+  Build: "做东西",
+  Learn: "学习",
+  Move: "运动",
+  Go: "出门",
+  Create: "创作",
+}
 
 const goalsPrefix = "profile:goals:"
 const availabilityPrefix = "profile:availability:"
@@ -97,6 +104,8 @@ function getFitForProfile(intent: any, profile: any) {
 }
 
 function ExploreContent() {
+  const { language, t } = useLanguage()
+  const isZh = language === "zh"
   const searchParams = useSearchParams()
   const urlSearchQuery = searchParams.get("search") || ""
   const [searchQuery, setSearchQuery] = useState("")
@@ -189,6 +198,11 @@ function ExploreContent() {
       prev.includes(category) ? prev.filter((item) => item !== category) : [...prev, category]
     )
   }
+  const statusFilters = [
+    { value: "all", label: statusFilterLabels[language].all },
+    { value: "recruiting", label: statusFilterLabels[language].recruiting },
+    { value: "in_progress", label: statusFilterLabels[language].in_progress },
+  ]
 
   return (
     <div className="min-h-screen bg-background lg:pl-64">
@@ -197,15 +211,15 @@ function ExploreContent() {
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Browse Sparks</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">{isZh ? "发现 Spark" : "Browse Sparks"}</h1>
             <p className="mt-1 text-muted-foreground">
-              Find something meaningful to start with someone else.
+              {isZh ? "看看别人想开始什么，找到你也想加入的事。" : "Find something meaningful to start with someone else."}
             </p>
           </div>
           <Button asChild>
             <Link href="/create">
               <Plus className="mr-2 h-4 w-4" />
-              New Spark
+              {t.nav.newProject}
             </Link>
           </Button>
         </div>
@@ -215,7 +229,7 @@ function ExploreContent() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search Sparks..."
+                placeholder={t.nav.searchProjects}
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 className="pl-10"
@@ -241,7 +255,7 @@ function ExploreContent() {
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Filter className="h-4 w-4" />
-              <span>Category:</span>
+              <span>{isZh ? "分类：" : "Category:"}</span>
             </div>
             {categories.map((category) => (
               <Badge
@@ -250,7 +264,7 @@ function ExploreContent() {
                 className="cursor-pointer transition-colors"
                 onClick={() => toggleCategory(category)}
               >
-                {category}
+                {isZh ? categoryLabels[category] || category : category}
               </Badge>
             ))}
             {selectedCategories.length > 0 && (
@@ -260,7 +274,7 @@ function ExploreContent() {
                 onClick={() => setSelectedCategories([])}
                 className="h-6 px-2 text-xs"
               >
-                Clear
+                {isZh ? "清除" : "Clear"}
               </Button>
             )}
           </div>
@@ -282,16 +296,16 @@ function ExploreContent() {
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-secondary">
                 <Sparkles className="h-7 w-7 text-muted-foreground" />
               </div>
-              <h3 className="mt-4 text-lg font-semibold text-foreground">No Sparks found</h3>
+              <h3 className="mt-4 text-lg font-semibold text-foreground">{isZh ? "还没有找到 Spark" : "No Sparks found"}</h3>
               <p className="mt-2 text-muted-foreground">
                 {searchQuery || selectedCategories.length > 0
-                  ? "Try a different search or category."
-                  : "Post the first Spark."}
+                  ? isZh ? "换个关键词或分类试试。" : "Try a different search or category."
+                  : isZh ? "发布第一个 Spark。" : "Post the first Spark."}
               </p>
               <Button asChild className="mt-6">
                 <Link href="/create">
                   <Plus className="mr-2 h-4 w-4" />
-                  New Spark
+                  {t.nav.newProject}
                 </Link>
               </Button>
             </div>

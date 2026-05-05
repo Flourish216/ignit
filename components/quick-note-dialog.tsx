@@ -19,6 +19,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
+import { useLanguage } from "@/lib/i18n/context"
 
 type NoteSource = "text" | "voice"
 
@@ -91,15 +92,15 @@ const getRecognition = () => {
   return Recognition ? new Recognition() : null
 }
 
-const formatDate = (value: string) =>
-  new Intl.DateTimeFormat(undefined, {
+const formatDate = (value: string, isZh = false) =>
+  new Intl.DateTimeFormat(isZh ? "zh-CN" : undefined, {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(value))
 
-const getNoteErrorMessage = (error: unknown) => {
+const getNoteErrorMessage = (error: unknown, isZh = false) => {
   const errorObject = error && typeof error === "object" ? error as Record<string, unknown> : null
   const message = [
     error instanceof Error ? error.message : null,
@@ -109,22 +110,29 @@ const getNoteErrorMessage = (error: unknown) => {
   ].filter(Boolean).join(" ")
 
   if (message.includes("archived_at")) {
-    return "Notes archive is not ready yet. Run the updated scripts/create-notes-table.sql in Supabase."
+    return isZh ? "灵感归档字段还没准备好。请在 Supabase 里运行最新的 notes 脚本。" : "Notes archive is not ready yet. Run the updated scripts/create-notes-table.sql in Supabase."
   }
   if (message.includes("public.notes") || message.includes("schema cache") || message.includes("PGRST205")) {
-    return "Notes storage is not ready yet. Run scripts/create-notes-table.sql in Supabase."
+    return isZh ? "灵感表还没准备好。请先在 Supabase 里运行 notes 脚本。" : "Notes storage is not ready yet. Run scripts/create-notes-table.sql in Supabase."
   }
-  return message || "Could not save note."
+  return message || (isZh ? "保存失败，请再试一次。" : "Could not save note.")
 }
 
 const isMissingArchiveColumn = (error: unknown) => {
-  const message = getNoteErrorMessage(error)
-  return message.includes("Notes archive is not ready yet")
+  const errorObject = error && typeof error === "object" ? error as Record<string, unknown> : null
+  const message = [
+    error instanceof Error ? error.message : null,
+    typeof errorObject?.message === "string" ? errorObject.message : null,
+    typeof errorObject?.details === "string" ? errorObject.details : null,
+  ].filter(Boolean).join(" ")
+  return message.includes("archived_at")
 }
 
 export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnly = false }: QuickNoteDialogProps) {
   const router = useRouter()
   const supabase = createClient()
+  const { language } = useLanguage()
+  const isZh = language === "zh"
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const finalTranscriptRef = useRef("")
 
@@ -198,7 +206,7 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
 
   const startListening = () => {
     if (!speechSupported) {
-      setError("Voice input is not supported in this browser.")
+      setError(isZh ? "这个浏览器暂时不支持语音输入。" : "Voice input is not supported in this browser.")
       return
     }
 
@@ -216,7 +224,7 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
 
     recognition.continuous = true
     recognition.interimResults = true
-    recognition.lang = /[\u4e00-\u9fa5]/.test(navigator.language) ? "zh-CN" : navigator.language || "en-US"
+    recognition.lang = isZh ? "zh-CN" : navigator.language || "en-US"
 
     recognition.onresult = (event) => {
       let interim = ""
@@ -236,7 +244,9 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
     }
 
     recognition.onerror = (event) => {
-      setError(event.error === "not-allowed" ? "Microphone permission was blocked." : "Voice input stopped.")
+      setError(event.error === "not-allowed"
+        ? isZh ? "麦克风权限被浏览器拦截了。" : "Microphone permission was blocked."
+        : isZh ? "语音输入中断了。" : "Voice input stopped.")
       setIsListening(false)
     }
 
@@ -282,7 +292,7 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
       setContent("")
       setSource("text")
     } catch (error) {
-      setError(getNoteErrorMessage(error))
+      setError(getNoteErrorMessage(error, isZh))
     } finally {
       setIsSaving(false)
     }
@@ -296,7 +306,7 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
       .eq("id", noteId)
       .eq("user_id", user.id)
     if (error) {
-      setError(getNoteErrorMessage(error))
+      setError(getNoteErrorMessage(error, isZh))
       return
     }
     mutateNotes((current = []) => current.filter((note) => note.id !== noteId), false)
@@ -341,7 +351,7 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
       setShapedNote((current) => current?.noteId === note.id ? null : current)
       handleCancelEdit()
     } catch (error) {
-      setError(getNoteErrorMessage(error))
+      setError(getNoteErrorMessage(error, isZh))
     } finally {
       setIsUpdatingNote(false)
     }
@@ -363,7 +373,7 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
       const data = await response.json()
       setShapedNote({ noteId: note.id, result: data.result || {} })
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Could not shape note.")
+      setError(error instanceof Error ? error.message : isZh ? "Igni 暂时没整理成功。" : "Could not shape note.")
     } finally {
       setShapingNoteId(null)
     }
@@ -392,10 +402,10 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Lightbulb className="h-5 w-5 text-primary" />
-            Quick note
+            {isZh ? "快速记录" : "Quick note"}
           </DialogTitle>
           <DialogDescription>
-            Capture a rough thought now. Turn it into a Spark when it is ready.
+            {isZh ? "先把粗糙想法记下来，准备好了再变成 Spark。" : "Capture a rough thought now. Turn it into a Spark when it is ready."}
           </DialogDescription>
         </DialogHeader>
 
@@ -407,7 +417,7 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
                 setContent(event.target.value)
                 if (!isListening) setSource("text")
               }}
-              placeholder="Record an idea, plan, place, or person you want to start with..."
+              placeholder={isZh ? "记录一个想法、计划、地点，或者想一起开始的人..." : "Record an idea, plan, place, or person you want to start with..."}
               className="min-h-32 resize-none border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
             />
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
@@ -421,31 +431,31 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
                   disabled={!speechSupported}
                 >
                   {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                  {isListening ? "Stop" : "Voice"}
+                  {isListening ? isZh ? "停止" : "Stop" : isZh ? "语音" : "Voice"}
                 </Button>
-                {source === "voice" && <Badge variant="secondary">voice</Badge>}
+                {source === "voice" && <Badge variant="secondary">{isZh ? "语音" : "voice"}</Badge>}
                 {!speechSupported && (
-                  <span className="text-xs text-muted-foreground">Voice works in supported browsers.</span>
+                  <span className="text-xs text-muted-foreground">{isZh ? "当前浏览器不支持语音输入。" : "Voice works in supported browsers."}</span>
                 )}
               </div>
               <Button type="button" onClick={handleSave} disabled={!content.trim() || isSaving}>
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : isZh ? "保存" : "Save"}
               </Button>
             </div>
           </div>
 
           {(error || notesError) && (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error || getNoteErrorMessage(notesError)}
+              {error || getNoteErrorMessage(notesError, isZh)}
             </div>
           )}
 
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <p className="text-sm font-medium text-foreground">Recent notes</p>
+              <p className="text-sm font-medium text-foreground">{isZh ? "最近记录" : "Recent notes"}</p>
               <Button asChild variant="ghost" size="sm">
                 <Link href="/notes" onClick={() => setOpen(false)}>
-                  View all
+                  {isZh ? "查看全部" : "View all"}
                 </Link>
               </Button>
             </div>
@@ -469,9 +479,9 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
                           </p>
                         )}
                         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                          <span>{formatDate(note.created_at)}</span>
+                          <span>{formatDate(note.created_at, isZh)}</span>
                           <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
-                            {note.source}
+                            {isZh ? note.source === "voice" ? "语音" : "文字" : note.source}
                           </Badge>
                         </div>
                       </div>
@@ -485,7 +495,7 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
                               className="h-8 w-8"
                               onClick={() => handleSaveEdit(note)}
                               disabled={!editContent.trim() || isUpdatingNote}
-                              aria-label="Save note"
+                              aria-label={isZh ? "保存灵感" : "Save note"}
                             >
                               {isUpdatingNote ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                             </Button>
@@ -495,7 +505,7 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
                               size="icon"
                               className="h-8 w-8"
                               onClick={handleCancelEdit}
-                              aria-label="Cancel edit"
+                              aria-label={isZh ? "取消编辑" : "Cancel edit"}
                             >
                               <X className="h-4 w-4" />
                             </Button>
@@ -508,7 +518,7 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
                               size="icon"
                               className="h-8 w-8"
                               onClick={() => handleStartEdit(note)}
-                              aria-label="Edit note"
+                              aria-label={isZh ? "编辑灵感" : "Edit note"}
                             >
                               <Edit3 className="h-4 w-4" />
                             </Button>
@@ -519,7 +529,7 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
                               className="h-8 w-8"
                               onClick={() => handleShapeNote(note)}
                               disabled={shapingNoteId === note.id}
-                              aria-label="Shape with Igni"
+                              aria-label={isZh ? "让 Igni 整理" : "Shape with Igni"}
                             >
                               {shapingNoteId === note.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -533,7 +543,7 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
                               size="icon"
                               className="h-8 w-8"
                               onClick={() => handleTurnIntoSpark(note.content)}
-                              aria-label="Turn into Spark"
+                              aria-label={isZh ? "变成 Spark" : "Turn into Spark"}
                             >
                               <Sparkles className="h-4 w-4" />
                             </Button>
@@ -543,7 +553,7 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
                               size="icon"
                               className="h-8 w-8 text-muted-foreground hover:text-foreground"
                               onClick={() => handleArchive(note.id)}
-                              aria-label="Archive note"
+                              aria-label={isZh ? "归档灵感" : "Archive note"}
                             >
                               <Archive className="h-4 w-4" />
                             </Button>
@@ -555,10 +565,10 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
                       <div className="mt-3 rounded-md border border-primary/20 bg-primary/5 p-3">
                         <div className="flex items-center gap-2 text-xs font-medium text-primary">
                           <Sparkles className="h-3.5 w-3.5" />
-                          Igni shaped this
+                          {isZh ? "Igni 整理好了" : "Igni shaped this"}
                         </div>
                         <p className="mt-2 text-sm font-medium text-foreground">
-                          {shapedNote.result.title || "Untitled Spark"}
+                          {shapedNote.result.title || (isZh ? "未命名 Spark" : "Untitled Spark")}
                         </p>
                         <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
                           {shapedNote.result.description || note.content}
@@ -574,7 +584,7 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-border p-5 text-center text-sm text-muted-foreground">
-                No notes yet.
+                {isZh ? "还没有记录。" : "No notes yet."}
               </div>
             )}
           </div>
@@ -582,7 +592,7 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => content && handleTurnIntoSpark(content)}>
-            Turn draft into Spark
+            {isZh ? "把草稿变成 Spark" : "Turn draft into Spark"}
           </Button>
         </DialogFooter>
       </DialogContent>

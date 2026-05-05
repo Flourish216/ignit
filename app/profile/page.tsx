@@ -22,6 +22,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { createClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/i18n/context"
 
 type ProfileDraft = {
   full_name: string
@@ -98,13 +99,25 @@ function getSparkSummary(sparks: any[] | undefined) {
     .join("\n")
 }
 
-function makeLocalLines(profile: ProfileDraft, sparks: any[] | undefined) {
+function getAvailabilityLabel(value: string, isZh: boolean) {
+  if (!isZh) return value.replace(/-/g, " ")
+  const labels: Record<string, string> = {
+    weekends: "周末有空",
+    evenings: "晚上有空",
+    "few-hours": "每周几小时",
+    flexible: "时间灵活",
+    exploring: "先看看",
+  }
+  return labels[value] || value.replace(/-/g, " ")
+}
+
+function makeLocalLines(profile: ProfileDraft, sparks: any[] | undefined, isZh: boolean) {
   const lines = [
     profile.bio ? profile.bio.split(/[.!?。！？]/)[0] : "",
     profile.current_goals,
-    profile.availability ? `usually free ${profile.availability.replace(/-/g, " ")}` : "",
-    profile.location ? `based around ${profile.location}` : "",
-    ...(sparks || []).slice(0, 2).map((spark) => `starting ${spark.title}`),
+    profile.availability ? isZh ? getAvailabilityLabel(profile.availability, true) : `usually free ${profile.availability.replace(/-/g, " ")}` : "",
+    profile.location ? isZh ? `常在 ${profile.location}` : `based around ${profile.location}` : "",
+    ...(sparks || []).slice(0, 2).map((spark) => isZh ? `正在开始 ${spark.title}` : `starting ${spark.title}`),
   ].filter(Boolean)
 
   return [...lines, ...fallbackLines].slice(0, 6)
@@ -113,6 +126,8 @@ function makeLocalLines(profile: ProfileDraft, sparks: any[] | undefined) {
 export default function ProfilePage() {
   const router = useRouter()
   const supabase = createClient()
+  const { language } = useLanguage()
+  const isZh = language === "zh"
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
@@ -157,8 +172,8 @@ export default function ProfilePage() {
   const displayProfile = isEditing ? editForm : normalizeProfile(profile)
 
   const companionLines = useMemo(() => {
-    return generatedLines.length > 0 ? generatedLines.slice(0, 6) : makeLocalLines(displayProfile, sparks)
-  }, [displayProfile, generatedLines, sparks])
+    return generatedLines.length > 0 ? generatedLines.slice(0, 6) : makeLocalLines(displayProfile, sparks, isZh)
+  }, [displayProfile, generatedLines, isZh, sparks])
 
   const hasCompanionContext = Boolean(
     generatedLines.length > 0 ||
@@ -183,7 +198,7 @@ export default function ProfilePage() {
 
   const handleArchiveSpark = async (spark: any) => {
     if (!user) return
-    if (!window.confirm("Archive this Spark? It will leave Browse but stay saved.")) return
+    if (!window.confirm(isZh ? "归档这个 Spark？它会从发现页隐藏，但仍会保留。" : "Archive this Spark? It will leave Browse but stay saved.")) return
 
     setDeletingSparkId(spark.id)
     setSaveError("")
@@ -215,8 +230,8 @@ export default function ProfilePage() {
       const message =
         error && typeof error === "object" && "message" in error
           ? String(error.message)
-          : "Unknown Supabase error"
-      setSaveError(`Could not archive Spark: ${message}`)
+          : isZh ? "未知错误" : "Unknown Supabase error"
+      setSaveError(isZh ? `Spark 归档失败：${message}` : `Could not archive Spark: ${message}`)
     } finally {
       setDeletingSparkId(null)
     }
@@ -267,8 +282,8 @@ export default function ProfilePage() {
       const message =
         error && typeof error === "object" && "message" in error
           ? String(error.message)
-          : "Unknown Supabase error"
-      setSaveError(`Could not save profile: ${message}`)
+          : isZh ? "未知错误" : "Unknown Supabase error"
+      setSaveError(isZh ? `主页保存失败：${message}` : `Could not save profile: ${message}`)
     } finally {
       setIsSaving(false)
     }
@@ -298,7 +313,7 @@ export default function ProfilePage() {
       setGeneratedLines(Array.isArray(data.lines) ? data.lines : [])
     } catch (error) {
       console.error("Error generating companion lines:", error)
-      setSaveError("Could not generate Igni lines right now.")
+      setSaveError(isZh ? "Igni 现在没生成成功，稍后再试。" : "Could not generate Igni lines right now.")
     } finally {
       setIsGenerating(false)
     }
@@ -327,26 +342,26 @@ export default function ProfilePage() {
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-foreground">Profile</h1>
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground">{isZh ? "主页" : "Profile"}</h1>
             <p className="mt-1 text-muted-foreground">
-              Describe yourself and what you want to start. Ignit turns that into Igni's voice.
+              {isZh ? "写下你是谁、想开始什么。Ignit 会把这些变成 Igni 的表达。" : "Describe yourself and what you want to start. Ignit turns that into Igni's voice."}
             </p>
           </div>
           {isEditing ? (
             <div className="flex gap-2">
               <Button variant="outline" onClick={cancelEditing}>
                 <X className="mr-2 h-4 w-4" />
-                Cancel
+                {isZh ? "取消" : "Cancel"}
               </Button>
               <Button onClick={handleSave} disabled={isSaving}>
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Save
+                {isZh ? "保存" : "Save"}
               </Button>
             </div>
           ) : (
             <Button variant="outline" onClick={startEditing}>
               <Pencil className="mr-2 h-4 w-4" />
-              Edit Profile
+              {isZh ? "编辑主页" : "Edit Profile"}
             </Button>
           )}
         </div>
@@ -372,7 +387,7 @@ export default function ProfilePage() {
                     <Input
                       value={editForm.full_name}
                       onChange={(event) => setEditForm({ ...editForm, full_name: event.target.value })}
-                      placeholder="Name"
+                      placeholder={isZh ? "名字" : "Name"}
                     />
                   ) : (
                     <>
@@ -381,7 +396,7 @@ export default function ProfilePage() {
                           displayProfile.full_name ? "text-foreground" : "text-muted-foreground/60"
                         }`}
                       >
-                        {displayProfile.full_name || "Unnamed starter"}
+                        {displayProfile.full_name || (isZh ? "还没有名字" : "Unnamed starter")}
                       </h2>
                       <p className="mt-1 truncate text-sm text-muted-foreground">{user.email}</p>
                     </>
@@ -391,55 +406,55 @@ export default function ProfilePage() {
 
               <div className="mt-6 grid gap-4">
                 <EditableTextArea
-                  label="About me"
+                  label={isZh ? "关于我" : "About me"}
                   value={editForm.bio}
                   displayValue={displayProfile.bio}
                   editing={isEditing}
-                  placeholder="Example: I like starting small things with people. I care about music, design, and getting ideas out fast..."
-                  emptyText="Example: I like starting small things with people. I care about music, design, and getting ideas out fast..."
+                  placeholder={isZh ? "例：我喜欢和别人一起把小想法做出来，平时关注音乐、设计和好玩的工具..." : "Example: I like starting small things with people. I care about music, design, and getting ideas out fast..."}
+                  emptyText={isZh ? "例：我喜欢和别人一起把小想法做出来，平时关注音乐、设计和好玩的工具..." : "Example: I like starting small things with people. I care about music, design, and getting ideas out fast..."}
                   onChange={(value) => setEditForm({ ...editForm, bio: value })}
                 />
                 <EditableTextArea
-                  label="What I want to start"
+                  label={isZh ? "我想开始什么" : "What I want to start"}
                   value={editForm.current_goals}
                   displayValue={displayProfile.current_goals}
                   editing={isEditing}
-                  placeholder="Example: I want to find people to build small tools, go to live shows, and start a campus creative group..."
-                  emptyText="Example: I want to find people to build small tools, go to live shows, and start a campus creative group..."
+                  placeholder={isZh ? "例：我想找人一起做小工具、看现场演出，或者建一个校园创作小组..." : "Example: I want to find people to build small tools, go to live shows, and start a campus creative group..."}
+                  emptyText={isZh ? "例：我想找人一起做小工具、看现场演出，或者建一个校园创作小组..." : "Example: I want to find people to build small tools, go to live shows, and start a campus creative group..."}
                   onChange={(value) => setEditForm({ ...editForm, current_goals: value })}
                 />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <EditableField
-                    label="Location"
+                    label={isZh ? "位置" : "Location"}
                     value={editForm.location}
                     displayValue={displayProfile.location}
-                    emptyText="Example: NYC, campus, online"
+                    emptyText={isZh ? "例：纽约、校园、线上" : "Example: NYC, campus, online"}
                     editing={isEditing}
                     onChange={(value) => setEditForm({ ...editForm, location: value })}
                   />
                   <EditableField
-                    label="Website"
+                    label={isZh ? "链接" : "Website"}
                     value={editForm.website}
                     displayValue={displayProfile.website}
-                    emptyText="Example: portfolio, project page, link"
+                    emptyText={isZh ? "例：作品集、项目页、个人链接" : "Example: portfolio, project page, link"}
                     editing={isEditing}
                     onChange={(value) => setEditForm({ ...editForm, website: value })}
                   />
                 </div>
                 <div className="rounded-lg border border-border bg-secondary/35 p-3">
-                  <p className="text-xs font-medium uppercase text-muted-foreground">Availability</p>
+                  <p className="text-xs font-medium uppercase text-muted-foreground">{isZh ? "时间状态" : "Availability"}</p>
                   {isEditing ? (
                     <select
                       value={editForm.availability}
                       onChange={(event) => setEditForm({ ...editForm, availability: event.target.value })}
                       className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     >
-                      <option value="">Select availability</option>
-                      <option value="weekends">Weekends</option>
-                      <option value="evenings">Evenings</option>
-                      <option value="few-hours">A few hours a week</option>
-                      <option value="flexible">Flexible</option>
-                      <option value="exploring">Just exploring</option>
+                      <option value="">{isZh ? "选择时间状态" : "Select availability"}</option>
+                      <option value="weekends">{isZh ? "周末" : "Weekends"}</option>
+                      <option value="evenings">{isZh ? "晚上" : "Evenings"}</option>
+                      <option value="few-hours">{isZh ? "每周几小时" : "A few hours a week"}</option>
+                      <option value="flexible">{isZh ? "灵活" : "Flexible"}</option>
+                      <option value="exploring">{isZh ? "先看看" : "Just exploring"}</option>
                     </select>
                   ) : (
                     <p
@@ -447,7 +462,7 @@ export default function ProfilePage() {
                         displayProfile.availability ? "text-foreground" : "italic text-muted-foreground/60"
                       }`}
                     >
-                      {displayProfile.availability ? displayProfile.availability.replace(/-/g, " ") : "Example: weekends"}
+                      {displayProfile.availability ? getAvailabilityLabel(displayProfile.availability, isZh) : isZh ? "例：周末" : "Example: weekends"}
                     </p>
                   )}
                 </div>
@@ -472,7 +487,7 @@ export default function ProfilePage() {
                     ) : (
                       <Sparkles className="mr-2 h-4 w-4" />
                     )}
-                    Generate
+                    {isZh ? "生成" : "Generate"}
                   </Button>
                 </div>
               </div>
@@ -498,11 +513,11 @@ export default function ProfilePage() {
         <section className="mt-6 rounded-lg border border-border bg-card p-5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-foreground">My Sparks</h2>
-                <p className="mt-1 text-sm text-muted-foreground">These give Igni context.</p>
+                <h2 className="text-lg font-semibold text-foreground">{isZh ? "我的 Spark" : "My Sparks"}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{isZh ? "这些会帮助 Igni 理解你想开始什么。" : "These give Igni context."}</p>
               </div>
               <Button asChild size="sm">
-                <Link href="/create">Create Spark</Link>
+                <Link href="/create">{isZh ? "创建 Spark" : "Create Spark"}</Link>
               </Button>
             </div>
 
@@ -539,10 +554,10 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="mt-5 rounded-lg border border-dashed border-border p-8 text-center">
-                <p className="font-medium text-foreground">No Sparks yet</p>
-                <p className="mt-1 text-sm text-muted-foreground">Create one to show what you want to start.</p>
+                <p className="font-medium text-foreground">{isZh ? "还没有 Spark" : "No Sparks yet"}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{isZh ? "创建一个 Spark，让别人知道你想开始什么。" : "Create one to show what you want to start."}</p>
                 <Button asChild className="mt-4">
-                  <Link href="/create">Create Spark</Link>
+                  <Link href="/create">{isZh ? "创建 Spark" : "Create Spark"}</Link>
                 </Button>
               </div>
             )}

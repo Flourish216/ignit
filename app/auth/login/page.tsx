@@ -14,8 +14,11 @@ import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, Suspense } from 'react'
+import { useLanguage } from '@/lib/i18n/context'
 
 function LoginForm() {
+  const { language } = useLanguage()
+  const isZh = language === 'zh'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -38,7 +41,7 @@ function LoginForm() {
       if (error) throw error
       router.push(redirectTo)
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : 'An error occurred')
+      setError(error instanceof Error ? error.message : isZh ? '登录失败，请再试一次。' : 'An error occurred')
     } finally {
       setIsLoading(false)
     }
@@ -50,16 +53,16 @@ function LoginForm() {
         <div className="flex flex-col gap-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl">Login</CardTitle>
+              <CardTitle className="text-2xl">{isZh ? '登录' : 'Login'}</CardTitle>
               <CardDescription>
-                Enter your email below to login to your account
+                {isZh ? '登录后就能发布 Spark、回应别人、进入工作区。' : 'Enter your email below to login to your account'}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin}>
                 <div className="flex flex-col gap-6">
                   <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">{isZh ? '邮箱' : 'Email'}</Label>
                     <Input
                       id="email"
                       type="email"
@@ -70,7 +73,7 @@ function LoginForm() {
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password">{isZh ? '密码' : 'Password'}</Label>
                     <Input
                       id="password"
                       type="password"
@@ -81,16 +84,16 @@ function LoginForm() {
                   </div>
                   {error && <p className="text-sm text-red-500">{error}</p>}
                   <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? 'Logging in...' : 'Login'}
+                    {isLoading ? isZh ? '登录中...' : 'Logging in...' : isZh ? '登录' : 'Login'}
                   </Button>
                 </div>
                 <div className="mt-4 text-center text-sm">
-                  Don&apos;t have an account?{' '}
+                  {isZh ? '还没有账号？' : 'Don’t have an account?'}{' '}
                   <Link
                     href="/auth/sign-up"
                     className="underline underline-offset-4"
                   >
-                    Sign up
+                    {isZh ? '注册' : 'Sign up'}
                   </Link>
                 </div>
               </form>

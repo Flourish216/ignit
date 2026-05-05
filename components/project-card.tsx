@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Calendar, ArrowRight } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
+import { zhCN } from "date-fns/locale"
+import { useLanguage } from "@/lib/i18n/context"
 
 interface ProjectCardProps {
   project: {
@@ -36,9 +38,19 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
   archived: { label: "Archived", variant: "outline" },
 }
 
+const statusZh: Record<string, string> = {
+  draft: "草稿",
+  recruiting: "开放中",
+  in_progress: "已开始",
+  completed: "完成",
+  archived: "已归档",
+}
+
 export function ProjectCard({ project }: ProjectCardProps) {
+  const { language } = useLanguage()
+  const isZh = language === "zh"
   const status = statusConfig[project.status] || statusConfig.draft
-  const oneLiner = project.ai_breakdown?.one_liner || project.description || "No description provided"
+  const oneLiner = project.ai_breakdown?.one_liner || project.description || (isZh ? "还没有简介。" : "No description provided")
   const roles = project.ai_breakdown?.roles?.map((role) => role.title) || project.required_roles || []
 
   return (
@@ -53,7 +65,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
               <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{oneLiner}</p>
             </div>
             <Badge variant={status.variant} className="shrink-0">
-              {status.label}
+              {isZh ? statusZh[project.status] || status.label : status.label}
             </Badge>
           </div>
 
@@ -82,7 +94,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
                   </AvatarFallback>
                 </Avatar>
                 <span className="truncate text-xs text-muted-foreground">
-                  {project.owner.full_name || "Anonymous"}
+                  {project.owner.full_name || (isZh ? "匿名用户" : "Anonymous")}
                 </span>
               </div>
             ) : (
@@ -90,7 +102,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
             )}
             <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
               <Calendar className="h-3 w-3" />
-              {formatDistanceToNow(new Date(project.created_at), { addSuffix: true })}
+              {formatDistanceToNow(new Date(project.created_at), { addSuffix: true, locale: isZh ? zhCN : undefined })}
               <ArrowRight className="h-4 w-4 text-primary opacity-0 transition-opacity group-hover:opacity-100" />
             </div>
           </div>

@@ -8,9 +8,10 @@ import { ArrowRight, Compass, Lightbulb, MessageSquare } from "lucide-react"
 import { useLanguage } from "@/lib/i18n/context"
 
 export default function HomePage() {
-  const { t } = useLanguage()
+  const { language, t } = useLanguage()
   const stepIcons = [Lightbulb, Compass, MessageSquare]
   const isDefaultTitle = t.mainline.title === "Don’t start alone."
+  const isChinese = language === "zh"
 
   return (
     <div className="min-h-screen bg-background lg:pl-64">
@@ -24,6 +25,12 @@ export default function HomePage() {
                   <>
                     <span>Don’t start</span>{" "}
                     <span className="home-art-title-emphasis">alone.</span>
+                  </>
+                ) : isChinese ? (
+                  <>
+                    <span>别</span>
+                    <span className="home-art-title-emphasis">一个人</span>
+                    <span>开始。</span>
                   </>
                 ) : (
                   t.mainline.title
