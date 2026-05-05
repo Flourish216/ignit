@@ -1,16 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { formatDistanceToNow } from "date-fns"
 import useSWR, { mutate } from "swr"
-import { ArrowLeft, Calendar, CheckCircle2, Clock, Loader2, MapPin, MessageCircle, MessageSquare, Send, Trash2, UserRound, XCircle } from "lucide-react"
+import { ArrowLeft, Calendar, CheckCircle2, Clock, Edit3, Loader2, MapPin, MessageCircle, MessageSquare, Send, Trash2, UserRound, XCircle } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
@@ -33,6 +34,18 @@ type IntentBreakdown = {
   vibe?: string
   commitment?: string
   status?: string
+}
+
+type SparkEditForm = {
+  title: string
+  category: string
+  description: string
+  location: string
+  time_availability: string
+  looking_for: string
+  vibe: string
+  commitment: string
+  status: string
 }
 
 const detailFields: Array<{ key: keyof IntentBreakdown; label: string; icon: typeof MapPin }> = [
@@ -58,8 +71,21 @@ export default function SparkDetailPage() {
   const [isSendingInterest, setIsSendingInterest] = useState(false)
   const [isDeletingSpark, setIsDeletingSpark] = useState(false)
   const [isOpeningWorkspace, setIsOpeningWorkspace] = useState(false)
+  const [isSavingSpark, setIsSavingSpark] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState<SparkEditForm>({
+    title: "",
+    category: "",
+    description: "",
+    location: "",
+    time_availability: "",
+    looking_for: "",
+    vibe: "",
+    commitment: "",
+    status: "",
+  })
 
   const { data: user } = useSWR("user", async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -107,6 +133,23 @@ export default function SparkDetailPage() {
   )
 
   const isOwner = user?.id === intent?.owner_id
+
+  useEffect(() => {
+    if (!intent) return
+
+    const details = (intent.ai_breakdown || {}) as IntentBreakdown
+    setEditForm({
+      title: details.title || intent.title || "",
+      category: details.category || "",
+      description: details.description || intent.description || "",
+      location: details.location || "",
+      time_availability: details.time_availability || "",
+      looking_for: details.looking_for || "",
+      vibe: details.vibe || "",
+      commitment: details.commitment || "",
+      status: details.status || getStatusLabel(intent.status || "recruiting"),
+    })
+  }, [intent])
 
   const { data: matchedTeam } = useSWR(
     existingInterest?.status === "accepted" && id ? ["matched-team", id] : null,
@@ -195,6 +238,63 @@ export default function SparkDetailPage() {
       setErrorMessage(error instanceof Error ? error.message : "Could not delete Spark")
     } finally {
       setIsDeletingSpark(false)
+    }
+  }
+
+  const handleEditField = (field: keyof SparkEditForm, value: string) => {
+    setEditForm((current) => ({ ...current, [field]: value }))
+  }
+
+  const handleSaveSpark = async () => {
+    if (!user || !id || !intent || !isOwner) return
+
+    const nextTitle = editForm.title.trim()
+    const nextDescription = editForm.description.trim()
+
+    if (!nextTitle || !nextDescription) {
+      setErrorMessage("Title and description are required.")
+      return
+    }
+
+    setIsSavingSpark(true)
+    setErrorMessage(null)
+
+    const currentBreakdown = (intent.ai_breakdown || {}) as IntentBreakdown
+    const nextBreakdown: IntentBreakdown = {
+      ...currentBreakdown,
+      title: nextTitle,
+      category: editForm.category.trim() || "Other",
+      description: nextDescription,
+      location: editForm.location.trim() || "Flexible",
+      time_availability: editForm.time_availability.trim() || "Flexible",
+      looking_for: editForm.looking_for.trim() || "Someone interested",
+      vibe: editForm.vibe.trim() || "Low-pressure",
+      commitment: editForm.commitment.trim() || "Flexible",
+      status: editForm.status.trim() || getStatusLabel(intent.status || "recruiting"),
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("projects")
+        .update({
+          title: nextTitle,
+          description: nextDescription,
+          ai_breakdown: nextBreakdown,
+          required_roles: nextBreakdown.looking_for ? [nextBreakdown.looking_for] : [],
+        })
+        .eq("id", id)
+        .eq("owner_id", user.id)
+        .select("*")
+        .single()
+
+      if (error) throw error
+
+      mutate(["intent", id], data, { revalidate: false })
+      setIsEditDialogOpen(false)
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Could not save Spark")
+    } finally {
+      setIsSavingSpark(false)
     }
   }
 
@@ -358,6 +458,133 @@ export default function SparkDetailPage() {
                     <div className="rounded-lg bg-secondary p-3 text-sm">
                       <span className="font-medium">{interestCount || 0}</span> interested
                     </div>
+                    <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="w-full" variant="outline">
+                          <Edit3 className="mr-2 h-4 w-4" />
+                          Edit Spark
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+                        <DialogHeader>
+                          <DialogTitle>Edit Spark Card</DialogTitle>
+                          <DialogDescription>
+                            Update the public card people see before they respond.
+                          </DialogDescription>
+                        </DialogHeader>
+
+                        <div className="grid gap-4">
+                          <div className="grid gap-2">
+                            <p className="text-sm font-medium text-foreground">Title</p>
+                            <Input
+                              value={editForm.title}
+                              onChange={(event) => handleEditField("title", event.target.value)}
+                              placeholder="What do you want to do?"
+                            />
+                          </div>
+
+                          <div className="grid gap-2">
+                            <p className="text-sm font-medium text-foreground">Description</p>
+                            <Textarea
+                              value={editForm.description}
+                              onChange={(event) => handleEditField("description", event.target.value)}
+                              placeholder="Describe what this Spark is about."
+                              className="min-h-24"
+                            />
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="grid gap-2">
+                              <p className="text-sm font-medium text-foreground">Category</p>
+                              <select
+                                value={editForm.category}
+                                onChange={(event) => handleEditField("category", event.target.value)}
+                                className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              >
+                                <option value="">Other</option>
+                                <option value="Build">Build</option>
+                                <option value="Learn">Learn</option>
+                                <option value="Move">Move</option>
+                                <option value="Go">Go</option>
+                                <option value="Create">Create</option>
+                              </select>
+                            </div>
+
+                            <div className="grid gap-2">
+                              <p className="text-sm font-medium text-foreground">Status</p>
+                              <select
+                                value={editForm.status}
+                                onChange={(event) => handleEditField("status", event.target.value)}
+                                className="h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              >
+                                <option value="open">open</option>
+                                <option value="matched">matched</option>
+                                <option value="paused">paused</option>
+                                <option value="done">done</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="grid gap-2">
+                              <p className="text-sm font-medium text-foreground">Location</p>
+                              <Input
+                                value={editForm.location}
+                                onChange={(event) => handleEditField("location", event.target.value)}
+                                placeholder="NYC, campus, online..."
+                              />
+                            </div>
+
+                            <div className="grid gap-2">
+                              <p className="text-sm font-medium text-foreground">Time</p>
+                              <Input
+                                value={editForm.time_availability}
+                                onChange={(event) => handleEditField("time_availability", event.target.value)}
+                                placeholder="Weekends, evenings, this Friday..."
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="grid gap-2">
+                              <p className="text-sm font-medium text-foreground">Looking for</p>
+                              <Input
+                                value={editForm.looking_for}
+                                onChange={(event) => handleEditField("looking_for", event.target.value)}
+                                placeholder="Gym partner, designer, study buddy..."
+                              />
+                            </div>
+
+                            <div className="grid gap-2">
+                              <p className="text-sm font-medium text-foreground">Commitment</p>
+                              <Input
+                                value={editForm.commitment}
+                                onChange={(event) => handleEditField("commitment", event.target.value)}
+                                placeholder="One-time, weekly, flexible..."
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid gap-2">
+                            <p className="text-sm font-medium text-foreground">Vibe</p>
+                            <Input
+                              value={editForm.vibe}
+                              onChange={(event) => handleEditField("vibe", event.target.value)}
+                              placeholder="Chill, focused, experimental..."
+                            />
+                          </div>
+                        </div>
+
+                        {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                          <Button onClick={handleSaveSpark} disabled={isSavingSpark}>
+                            {isSavingSpark ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Save Spark
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                     <Button asChild className="w-full" variant="outline">
                       <Link href="/teams?view=applications">Review interests</Link>
                     </Button>
