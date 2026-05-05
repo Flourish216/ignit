@@ -227,7 +227,9 @@ function ExploreContent() {
         <div className="mt-8 space-y-4">
           <div className="flex flex-col gap-4 sm:flex-row">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <span className="pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center text-muted-foreground">
+                <Search className="h-4 w-4" />
+              </span>
               <Input
                 placeholder={t.nav.searchProjects}
                 value={searchQuery}

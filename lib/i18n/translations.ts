@@ -77,7 +77,7 @@ export const translations = {
     language: 'Language',
   },
   zh: {
-    nav: { home: '首页', explore: '发现', teams: '我的 Spark', workspace: '工作区', notes: '灵感', newProject: '新建 Spark', quickNote: '随手记', signIn: '登录', getStarted: '开始', profile: '主页', myTeams: '我的 Spark', messages: '工作区', searchProjects: '搜搜想做的事...', signOut: '退出登录' },
+    nav: { home: '首页', explore: '发现', teams: '我的 Spark', workspace: '工作区', notes: '灵感', newProject: '新建 Spark', quickNote: '随心记', signIn: '登录', getStarted: '开始', profile: '主页', myTeams: '我的 Spark', messages: '工作区', searchProjects: '搜搜想做的事...', signOut: '退出登录' },
     hero: { badge: '找一个一起开始的人', title: '别一个人开始。', titleHighlight: '', description: '告诉 Ignit 你想做什么，看看谁也想一起做。' },
     features: { title: '怎么开始', subtitle: '从一句念头，到真的有人一起做', shareIdea: { title: '先写下来', description: '一句话就行，不用一开始想完整。' }, aiBreakdown: { title: '整理成 Spark', description: 'Ignit 帮你把想法收成一张别人看得懂的卡。' }, findTeam: { title: '等人回应', description: '感兴趣的人可以直接举手。' }, buildTogether: { title: '进工作区', description: '聊清楚第一步，然后开干。' } },
     cta: { title: '脑子里已经有一件事？', subtitle: '先发成 Spark，看看有没有人想一起。', exploreProjects: '去发现', createAccount: '创建账户' },

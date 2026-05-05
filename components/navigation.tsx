@@ -200,7 +200,9 @@ export function Navigation() {
 
       <header className="sticky top-0 z-40 hidden h-16 items-center justify-end gap-3 border-b border-border bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:flex">
         <form onSubmit={handleSearch} className="relative w-72 xl:w-96">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <span className="pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center text-muted-foreground">
+            <Search className="h-4 w-4" />
+          </span>
           <Input
             type="search"
             value={searchQuery}

@@ -402,7 +402,7 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Lightbulb className="h-5 w-5 text-primary" />
-            {isZh ? "快速记录" : "Quick note"}
+            {isZh ? "随心记" : "Quick note"}
           </DialogTitle>
           <DialogDescription>
             {isZh ? "先把粗糙想法记下来，准备好了再变成 Spark。" : "Capture a rough thought now. Turn it into a Spark when it is ready."}
