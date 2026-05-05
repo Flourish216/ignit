@@ -4,12 +4,13 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { formatDistanceToNow } from "date-fns"
-import { Loader2, Mic, NotebookPen, Sparkles, Trash2, Type, Wand2 } from "lucide-react"
+import { Check, Edit3, Loader2, Mic, NotebookPen, Sparkles, Trash2, Type, Wand2, X } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { QuickNoteDialog } from "@/components/quick-note-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Textarea } from "@/components/ui/textarea"
 import { createClient } from "@/lib/supabase/client"
 
 type Note = {
@@ -54,6 +55,9 @@ export default function NotesPage() {
   const [shapingNoteId, setShapingNoteId] = useState<string | null>(null)
   const [shapedNote, setShapedNote] = useState<ShapedNote | null>(null)
   const [shapeError, setShapeError] = useState<string | null>(null)
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+  const [editContent, setEditContent] = useState("")
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
 
   const { data: user, isLoading: userLoading } = useSWR("user", async () => {
     const {
@@ -86,6 +90,45 @@ export default function NotesPage() {
     const { error } = await supabase.from("notes").delete().eq("id", noteId)
     if (error) return
     mutate((current = []) => current.filter((note) => note.id !== noteId), false)
+  }
+
+  const handleStartEdit = (note: Note) => {
+    setEditingNoteId(note.id)
+    setEditContent(note.content)
+    setShapeError(null)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingNoteId(null)
+    setEditContent("")
+  }
+
+  const handleSaveEdit = async (note: Note) => {
+    const text = editContent.trim()
+    if (!text || !user) return
+
+    setIsSavingEdit(true)
+    setShapeError(null)
+
+    try {
+      const { data, error } = await supabase
+        .from("notes")
+        .update({ content: text })
+        .eq("id", note.id)
+        .eq("user_id", user.id)
+        .select("id, user_id, content, source, converted_project_id, created_at, updated_at")
+        .single()
+
+      if (error) throw error
+
+      mutate((current = []) => current.map((currentNote) => currentNote.id === note.id ? data as Note : currentNote), false)
+      setShapedNote((current) => current?.noteId === note.id ? null : current)
+      handleCancelEdit()
+    } catch (error) {
+      setShapeError(error instanceof Error ? error.message : "Could not save note.")
+    } finally {
+      setIsSavingEdit(false)
+    }
   }
 
   const handleTurnIntoSpark = (content: string) => {
@@ -189,41 +232,82 @@ export default function NotesPage() {
                             {formatDistanceToNow(new Date(note.created_at), { addSuffix: true })}
                           </span>
                         </div>
-                        <p className="whitespace-pre-wrap break-words text-sm leading-7 text-foreground">
-                          {note.content}
-                        </p>
+                        {editingNoteId === note.id ? (
+                          <Textarea
+                            value={editContent}
+                            onChange={(event) => setEditContent(event.target.value)}
+                            className="min-h-28 text-sm leading-7"
+                            autoFocus
+                          />
+                        ) : (
+                          <p className="whitespace-pre-wrap break-words text-sm leading-7 text-foreground">
+                            {note.content}
+                          </p>
+                        )}
                       </div>
                       <div className="flex shrink-0 flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="gap-2"
-                          onClick={() => handleShapeNote(note)}
-                          disabled={shapingNoteId === note.id}
-                        >
-                          {shapingNoteId === note.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Wand2 className="h-4 w-4" />
-                          )}
-                          Shape
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => handleTurnIntoSpark(note.content)}
-                        >
-                          <Sparkles className="h-4 w-4" />
-                          Spark
-                        </Button>
+                        {editingNoteId === note.id ? (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="gap-2"
+                              onClick={() => handleSaveEdit(note)}
+                              disabled={!editContent.trim() || isSavingEdit}
+                            >
+                              {isSavingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                              Save
+                            </Button>
+                            <Button type="button" size="sm" variant="outline" className="gap-2" onClick={handleCancelEdit}>
+                              <X className="h-4 w-4" />
+                              Cancel
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="gap-2"
+                              onClick={() => handleStartEdit(note)}
+                            >
+                              <Edit3 className="h-4 w-4" />
+                              Edit
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="gap-2"
+                              onClick={() => handleShapeNote(note)}
+                              disabled={shapingNoteId === note.id}
+                            >
+                              {shapingNoteId === note.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Wand2 className="h-4 w-4" />
+                              )}
+                              Shape
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="gap-2"
+                              onClick={() => handleTurnIntoSpark(note.content)}
+                            >
+                              <Sparkles className="h-4 w-4" />
+                              Spark
+                            </Button>
+                          </>
+                        )}
                         <Button
                           type="button"
                           size="icon"
                           variant="ghost"
                           className="h-9 w-9 text-muted-foreground hover:text-destructive"
                           onClick={() => handleDelete(note.id)}
+                          disabled={editingNoteId === note.id}
                           aria-label="Delete note"
                         >
                           <Trash2 className="h-4 w-4" />

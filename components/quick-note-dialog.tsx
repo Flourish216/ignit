@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import useSWR, { mutate } from "swr"
-import { Lightbulb, Loader2, Mic, MicOff, NotebookPen, Plus, Sparkles, Trash2, Wand2 } from "lucide-react"
+import { Check, Edit3, Lightbulb, Loader2, Mic, MicOff, NotebookPen, Plus, Sparkles, Trash2, Wand2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -127,6 +127,9 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
   const [error, setError] = useState<string | null>(null)
   const [shapingNoteId, setShapingNoteId] = useState<string | null>(null)
   const [shapedNote, setShapedNote] = useState<ShapedNote | null>(null)
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
+  const [editContent, setEditContent] = useState("")
+  const [isUpdatingNote, setIsUpdatingNote] = useState(false)
 
   const { data: user } = useSWR("user", async () => {
     const {
@@ -271,6 +274,51 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
       return
     }
     mutateNotes((current = []) => current.filter((note) => note.id !== noteId), false)
+    if (editingNoteId === noteId) {
+      setEditingNoteId(null)
+      setEditContent("")
+    }
+  }
+
+  const handleStartEdit = (note: QuickNote) => {
+    setEditingNoteId(note.id)
+    setEditContent(note.content)
+    setError(null)
+  }
+
+  const handleCancelEdit = () => {
+    setEditingNoteId(null)
+    setEditContent("")
+  }
+
+  const handleSaveEdit = async (note: QuickNote) => {
+    const text = editContent.trim()
+    if (!text || !user) return
+
+    setIsUpdatingNote(true)
+    setError(null)
+
+    try {
+      const { data, error } = await supabase
+        .from("notes")
+        .update({ content: text })
+        .eq("id", note.id)
+        .eq("user_id", user.id)
+        .select("id, user_id, content, source, converted_project_id, created_at, updated_at")
+        .single()
+
+      if (error) throw error
+      if (data) {
+        mutateNotes((current = []) => current.map((currentNote) => currentNote.id === note.id ? data as QuickNote : currentNote), false)
+        mutate(`notes-${user.id}`)
+      }
+      setShapedNote((current) => current?.noteId === note.id ? null : current)
+      handleCancelEdit()
+    } catch (error) {
+      setError(getNoteErrorMessage(error))
+    } finally {
+      setIsUpdatingNote(false)
+    }
   }
 
   const handleShapeNote = async (note: QuickNote) => {
@@ -382,9 +430,18 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
                   <div key={note.id} className="rounded-lg border border-border bg-background p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-foreground">
-                          {note.content}
-                        </p>
+                        {editingNoteId === note.id ? (
+                          <Textarea
+                            value={editContent}
+                            onChange={(event) => setEditContent(event.target.value)}
+                            className="min-h-24 text-sm leading-6"
+                            autoFocus
+                          />
+                        ) : (
+                          <p className="line-clamp-3 whitespace-pre-wrap text-sm leading-6 text-foreground">
+                            {note.content}
+                          </p>
+                        )}
                         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           <span>{formatDate(note.created_at)}</span>
                           <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
@@ -393,41 +450,79 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
                         </div>
                       </div>
                       <div className="flex shrink-0 gap-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleShapeNote(note)}
-                          disabled={shapingNoteId === note.id}
-                          aria-label="Shape with Igni"
-                        >
-                          {shapingNoteId === note.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Wand2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleTurnIntoSpark(note.content)}
-                          aria-label="Turn into Spark"
-                        >
-                          <Sparkles className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDelete(note.id)}
-                          aria-label="Delete note"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {editingNoteId === note.id ? (
+                          <>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleSaveEdit(note)}
+                              disabled={!editContent.trim() || isUpdatingNote}
+                              aria-label="Save note"
+                            >
+                              {isUpdatingNote ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={handleCancelEdit}
+                              aria-label="Cancel edit"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleStartEdit(note)}
+                              aria-label="Edit note"
+                            >
+                              <Edit3 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleShapeNote(note)}
+                              disabled={shapingNoteId === note.id}
+                              aria-label="Shape with Igni"
+                            >
+                              {shapingNoteId === note.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Wand2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleTurnIntoSpark(note.content)}
+                              aria-label="Turn into Spark"
+                            >
+                              <Sparkles className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => handleDelete(note.id)}
+                              aria-label="Delete note"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                     {shapedNote?.noteId === note.id && (
