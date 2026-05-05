@@ -62,13 +62,17 @@ function CreateIntentContent() {
   const initialIdea = searchParams.get("idea") || ""
   const [idea, setIdea] = useState(initialIdea)
   const [editableIdea, setEditableIdea] = useState(initialIdea)
+  const [structuredIdea, setStructuredIdea] = useState("")
   const [intent, setIntent] = useState<IntentBreakdown | null>(null)
   const [isStructuring, setIsStructuring] = useState(false)
   const [isPublishing, setIsPublishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loadingMessage, setLoadingMessage] = useState(0)
   const loadingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const structureRequestRef = useRef(0)
   const loadingMessages = t.create.loadingMessages
+  const currentDraft = editableIdea.trim()
+  const hasUnstructuredChanges = Boolean(intent && currentDraft && currentDraft !== structuredIdea)
 
   const { data: user, isLoading: userLoading } = useSWR("user", async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -89,16 +93,26 @@ function CreateIntentContent() {
   }, [initialIdea, user])
 
   const structureIntent = async (intentText: string) => {
+    const promptText = intentText.trim()
+    if (!promptText) return
+
     if (!user) {
-      const redirect = `/create?idea=${encodeURIComponent(intentText)}`
+      const redirect = `/create?idea=${encodeURIComponent(promptText)}`
       router.push(`/auth/login?redirect=${encodeURIComponent(redirect)}`)
       return
     }
 
+    const requestId = structureRequestRef.current + 1
+    structureRequestRef.current = requestId
     setIsStructuring(true)
     setError(null)
     setIntent(null)
+    setStructuredIdea("")
     setLoadingMessage(0)
+    if (loadingIntervalRef.current) {
+      clearInterval(loadingIntervalRef.current)
+      loadingIntervalRef.current = null
+    }
     loadingIntervalRef.current = setInterval(() => {
       setLoadingMessage((prev) => (prev + 1) % loadingMessages.length)
     }, 1800)
@@ -107,7 +121,7 @@ function CreateIntentContent() {
       const response = await fetch("/api/ai/breakdown", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idea: intentText }),
+        body: JSON.stringify({ idea: promptText }),
       })
 
       if (!response.ok) {
@@ -117,12 +131,17 @@ function CreateIntentContent() {
 
       const data = await response.json()
       if (!data.result) throw new Error("Invalid response format")
+      if (structureRequestRef.current !== requestId) return
+      setIdea(promptText)
+      setEditableIdea(promptText)
+      setStructuredIdea(promptText)
       setIntent(data.result)
     } catch (err) {
+      if (structureRequestRef.current !== requestId) return
       setError(err instanceof Error ? err.message : "Something went wrong")
     } finally {
-      setIsStructuring(false)
-      if (loadingIntervalRef.current) {
+      if (structureRequestRef.current === requestId) setIsStructuring(false)
+      if (structureRequestRef.current === requestId && loadingIntervalRef.current) {
         clearInterval(loadingIntervalRef.current)
         loadingIntervalRef.current = null
       }
@@ -138,6 +157,10 @@ function CreateIntentContent() {
 
   const handlePublish = async () => {
     if (!user || !intent) return
+    if (hasUnstructuredChanges) {
+      setError("Regenerate the Spark after editing the idea, then publish.")
+      return
+    }
 
     setIsPublishing(true)
     setError(null)
@@ -332,12 +355,17 @@ function CreateIntentContent() {
                   className="min-h-[96px]"
                   placeholder={t.create.editPlaceholder}
                 />
+                {hasUnstructuredChanges && (
+                  <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-sm text-primary">
+                    You changed the idea. Regenerate the Spark before publishing so the card matches this draft.
+                  </p>
+                )}
                 <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-                  <Button variant="outline" onClick={handleRegenerate} disabled={!editableIdea.trim() || isStructuring}>
+                  <Button variant="outline" onClick={handleRegenerate} disabled={!editableIdea.trim() || isStructuring || isPublishing}>
                     <RefreshCw className="mr-2 h-4 w-4" />
                     {t.create.regenerate}
                   </Button>
-                  <Button onClick={handlePublish} disabled={isPublishing}>
+                  <Button onClick={handlePublish} disabled={isPublishing || isStructuring || hasUnstructuredChanges}>
                     {isPublishing ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
