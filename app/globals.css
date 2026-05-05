@@ -153,14 +153,14 @@
 }
 
 .home-art-title-emphasis-en {
-  font-family: "Iowan Old Style", "Baskerville", "Libre Baskerville", Georgia, "Times New Roman", serif;
-  font-size: 1.08em;
-  font-style: italic;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  line-height: 0.9;
-  transform: rotate(-2.5deg) scaleY(1.12);
-  transform-origin: 50% 62%;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 1em;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 0.96;
+  transform: rotate(-1deg);
+  transform-origin: 50% 58%;
 }
 
 .home-art-title-emphasis::after {
