@@ -227,14 +227,14 @@ function ExploreContent() {
         <div className="mt-8 space-y-4">
           <div className="flex flex-col gap-4 sm:flex-row">
             <div className="relative flex-1">
-              <span className="pointer-events-none absolute inset-y-0 left-0 flex w-10 items-center justify-center text-muted-foreground">
+              <span className="pointer-events-none absolute left-0 top-0 flex h-11 w-11 items-center justify-center text-muted-foreground">
                 <Search className="h-4 w-4" />
               </span>
               <Input
                 placeholder={t.nav.searchProjects}
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                className="pl-10"
+                className="h-11 rounded-lg pl-11"
               />
             </div>
             <div className="flex rounded-lg border border-border bg-card p-1">
