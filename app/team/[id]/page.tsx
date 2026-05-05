@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { formatDistanceToNow } from "date-fns"
@@ -148,6 +148,100 @@ const isIgniReply = (content: string) => content.startsWith(igniReplyPrefix)
 
 const getMessageContent = (content: string) =>
   isIgniReply(content) ? content.slice(igniReplyPrefix.length).trim() : content
+
+const renderInlineMarkdown = (text: string): ReactNode[] =>
+  text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g).map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={`${part}-${index}`} className="font-semibold text-foreground">
+          {part.slice(2, -2)}
+        </strong>
+      )
+    }
+
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code key={`${part}-${index}`} className="rounded bg-background px-1 py-0.5 text-[0.9em] text-foreground">
+          {part.slice(1, -1)}
+        </code>
+      )
+    }
+
+    return part
+  })
+
+function IgniMarkdown({ content }: { content: string }) {
+  const lines = content.trim().split("\n")
+  const blocks: ReactNode[] = []
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const rawLine = lines[index]
+    const line = rawLine.trim()
+    if (!line) continue
+
+    const heading = line.match(/^#{1,4}\s+(.+)$/)
+    if (heading) {
+      blocks.push(
+        <h4 key={`heading-${index}`} className="pt-1 text-sm font-semibold text-foreground">
+          {renderInlineMarkdown(heading[1])}
+        </h4>,
+      )
+      continue
+    }
+
+    const orderedMatch = line.match(/^\d+\.\s+(.+)$/)
+    if (orderedMatch) {
+      const items = [orderedMatch[1]]
+      while (index + 1 < lines.length) {
+        const next = lines[index + 1].trim()
+        const nextMatch = next.match(/^\d+\.\s+(.+)$/)
+        if (!nextMatch) break
+        items.push(nextMatch[1])
+        index += 1
+      }
+      blocks.push(
+        <ol key={`ordered-${index}`} className="list-decimal space-y-1 pl-5">
+          {items.map((item, itemIndex) => (
+            <li key={`${item}-${itemIndex}`} className="pl-1">
+              {renderInlineMarkdown(item)}
+            </li>
+          ))}
+        </ol>,
+      )
+      continue
+    }
+
+    const unorderedMatch = line.match(/^[-*]\s+(.+)$/)
+    if (unorderedMatch) {
+      const items = [unorderedMatch[1]]
+      while (index + 1 < lines.length) {
+        const next = lines[index + 1].trim()
+        const nextMatch = next.match(/^[-*]\s+(.+)$/)
+        if (!nextMatch) break
+        items.push(nextMatch[1])
+        index += 1
+      }
+      blocks.push(
+        <ul key={`unordered-${index}`} className="list-disc space-y-1 pl-5">
+          {items.map((item, itemIndex) => (
+            <li key={`${item}-${itemIndex}`} className="pl-1">
+              {renderInlineMarkdown(item)}
+            </li>
+          ))}
+        </ul>,
+      )
+      continue
+    }
+
+    blocks.push(
+      <p key={`paragraph-${index}`} className="leading-6">
+        {renderInlineMarkdown(line)}
+      </p>,
+    )
+  }
+
+  return <div className="mt-1 space-y-2 break-words text-sm text-foreground">{blocks}</div>
+}
 
 export default function TeamWorkspacePage() {
   const params = useParams()
@@ -820,9 +914,13 @@ export default function TeamWorkspacePage() {
                             </span>
                           </div>
 
-                          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
-                            {content}
-                          </p>
+                          {messageIsIgni ? (
+                            <IgniMarkdown content={content} />
+                          ) : (
+                            <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
+                              {content}
+                            </p>
+                          )}
                         </div>
                       </div>
                     )
