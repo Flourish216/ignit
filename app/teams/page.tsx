@@ -93,6 +93,7 @@ export default function TeamsPage() {
         .from("projects")
         .select("*")
         .eq("owner_id", user.id)
+        .neq("status", "archived")
         .order("created_at", { ascending: false })
       
       if (error) {
@@ -241,6 +242,7 @@ export default function TeamsPage() {
         .from("projects")
         .select("id, title, description, status, owner_id")
         .in("id", projectIds)
+        .neq("status", "archived")
       
       if (error) {
         console.error("Membership projects fetch error:", error)
@@ -308,6 +310,7 @@ export default function TeamsPage() {
         .from("projects")
         .select("id")
         .eq("owner_id", user.id)
+        .neq("status", "archived")
 
       if (!projects || projects.length === 0) return []
 

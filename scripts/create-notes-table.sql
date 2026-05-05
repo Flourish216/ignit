@@ -5,12 +5,19 @@ CREATE TABLE IF NOT EXISTS public.notes (
   content TEXT NOT NULL,
   source TEXT NOT NULL DEFAULT 'text' CHECK (source IN ('text', 'voice')),
   converted_project_id UUID REFERENCES public.projects(id) ON DELETE SET NULL,
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE public.notes
+  ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+
 CREATE INDEX IF NOT EXISTS idx_notes_user_id_created_at
   ON public.notes(user_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_notes_user_id_archived_created_at
+  ON public.notes(user_id, archived_at, created_at DESC);
 
 ALTER TABLE public.notes ENABLE ROW LEVEL SECURITY;
 

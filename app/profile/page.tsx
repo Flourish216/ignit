@@ -5,12 +5,12 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import useSWR, { mutate } from "swr"
 import {
+  Archive,
   Gamepad2,
   Loader2,
   Pencil,
   Save,
   Sparkles,
-  Trash2,
   X,
 } from "lucide-react"
 import { Navigation } from "@/components/navigation"
@@ -147,6 +147,7 @@ export default function ProfilePage() {
         .from("projects")
         .select("id, title, description, ai_breakdown, status, created_at")
         .eq("owner_id", user.id)
+        .neq("status", "archived")
         .order("created_at", { ascending: false })
         .limit(3)
       return data || []
@@ -180,34 +181,42 @@ export default function ProfilePage() {
     setIsEditing(false)
   }
 
-  const handleDeleteSpark = async (sparkId: string) => {
+  const handleArchiveSpark = async (spark: any) => {
     if (!user) return
-    if (!window.confirm("Delete this Spark? This cannot be undone.")) return
+    if (!window.confirm("Archive this Spark? It will leave Browse but stay saved.")) return
 
-    setDeletingSparkId(sparkId)
+    setDeletingSparkId(spark.id)
     setSaveError("")
 
     try {
+      const nextBreakdown = {
+        ...(spark.ai_breakdown || {}),
+        status: "archived",
+      }
+
       const { error } = await supabase
         .from("projects")
-        .delete()
-        .eq("id", sparkId)
+        .update({
+          status: "archived",
+          ai_breakdown: nextBreakdown,
+        })
+        .eq("id", spark.id)
         .eq("owner_id", user.id)
 
       if (error) throw error
 
       mutate(
         `profile-sparks-${user.id}`,
-        (current: any[] | undefined) => current?.filter((spark) => spark.id !== sparkId) || [],
+        (current: any[] | undefined) => current?.filter((currentSpark) => currentSpark.id !== spark.id) || [],
         { revalidate: false }
       )
     } catch (error) {
-      console.error("Error deleting Spark:", error)
+      console.error("Error archiving Spark:", error)
       const message =
         error && typeof error === "object" && "message" in error
           ? String(error.message)
           : "Unknown Supabase error"
-      setSaveError(`Could not delete Spark: ${message}`)
+      setSaveError(`Could not archive Spark: ${message}`)
     } finally {
       setDeletingSparkId(null)
     }
@@ -508,15 +517,15 @@ export default function ProfilePage() {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDeleteSpark(spark.id)}
+                          className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                          onClick={() => handleArchiveSpark(spark)}
                           disabled={deletingSparkId === spark.id}
-                          aria-label="Delete Spark"
+                          aria-label="Archive Spark"
                         >
                           {deletingSparkId === spark.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            <Trash2 className="h-4 w-4" />
+                            <Archive className="h-4 w-4" />
                           )}
                         </Button>
                       </div>

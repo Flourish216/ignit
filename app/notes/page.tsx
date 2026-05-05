@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { formatDistanceToNow } from "date-fns"
-import { Check, Edit3, Loader2, Mic, NotebookPen, Sparkles, Trash2, Type, Wand2, X } from "lucide-react"
+import { Archive, Check, Edit3, Loader2, Mic, NotebookPen, Sparkles, Type, Wand2, X } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { QuickNoteDialog } from "@/components/quick-note-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -19,6 +19,7 @@ type Note = {
   content: string
   source: "text" | "voice"
   converted_project_id: string | null
+  archived_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -43,10 +44,18 @@ const getNoteErrorMessage = (error: unknown) => {
     typeof errorObject?.details === "string" ? errorObject.details : null,
   ].filter(Boolean).join(" ")
 
+  if (message.includes("archived_at")) {
+    return "Notes archive is not ready yet. Run the updated scripts/create-notes-table.sql in Supabase."
+  }
   if (message.includes("public.notes") || message.includes("schema cache") || message.includes("PGRST205")) {
     return "Notes storage is not ready yet. Run scripts/create-notes-table.sql in Supabase."
   }
   return message || "Could not load notes."
+}
+
+const isMissingArchiveColumn = (error: unknown) => {
+  const message = getNoteErrorMessage(error)
+  return message.includes("Notes archive is not ready yet")
 }
 
 export default function NotesPage() {
@@ -76,19 +85,37 @@ export default function NotesPage() {
     async () => {
       const { data, error } = await supabase
         .from("notes")
-        .select("id, user_id, content, source, converted_project_id, created_at, updated_at")
+        .select("id, user_id, content, source, converted_project_id, archived_at, created_at, updated_at")
         .eq("user_id", user!.id)
+        .is("archived_at", null)
         .order("created_at", { ascending: false })
 
+      if (isMissingArchiveColumn(error)) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from("notes")
+          .select("id, user_id, content, source, converted_project_id, created_at, updated_at")
+          .eq("user_id", user!.id)
+          .order("created_at", { ascending: false })
+
+        if (fallbackError) throw fallbackError
+        return fallbackData as Note[]
+      }
       if (error) throw error
       return data as Note[]
     },
     { shouldRetryOnError: false },
   )
 
-  const handleDelete = async (noteId: string) => {
-    const { error } = await supabase.from("notes").delete().eq("id", noteId)
-    if (error) return
+  const handleArchive = async (noteId: string) => {
+    const { error } = await supabase
+      .from("notes")
+      .update({ archived_at: new Date().toISOString() })
+      .eq("id", noteId)
+      .eq("user_id", user!.id)
+    if (error) {
+      setShapeError(getNoteErrorMessage(error))
+      return
+    }
     mutate((current = []) => current.filter((note) => note.id !== noteId), false)
   }
 
@@ -305,12 +332,12 @@ export default function NotesPage() {
                           type="button"
                           size="icon"
                           variant="ghost"
-                          className="h-9 w-9 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleDelete(note.id)}
+                          className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                          onClick={() => handleArchive(note.id)}
                           disabled={editingNoteId === note.id}
-                          aria-label="Delete note"
+                          aria-label="Archive note"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Archive className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>

@@ -114,6 +114,7 @@ function ExploreContent() {
       let query = supabase
         .from("projects")
         .select("*")
+        .neq("status", "archived")
         .order("created_at", { ascending: false })
 
       if (statusFilter !== "all") {

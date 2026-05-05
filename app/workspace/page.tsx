@@ -71,6 +71,7 @@ export default function WorkspaceShortcutPage() {
           .from("projects")
           .select("id")
           .eq("owner_id", user.id)
+          .neq("status", "archived")
           .order("created_at", { ascending: false }),
         supabase
           .from("team_members")
@@ -145,12 +146,14 @@ export default function WorkspaceShortcutPage() {
         return latest
       }, {})
 
-      const normalizedTeams = uniqueTeams.map((team) => ({
-        ...team,
-        project: firstRelation(team.project),
-        member_count: memberCountByTeam[team.id] || 0,
-        latest_message_at: latestMessageByProject[team.project_id] || null,
-      })) as TeamTarget[]
+      const normalizedTeams = uniqueTeams
+        .map((team) => ({
+          ...team,
+          project: firstRelation(team.project),
+          member_count: memberCountByTeam[team.id] || 0,
+          latest_message_at: latestMessageByProject[team.project_id] || null,
+        }))
+        .filter((team) => team.project?.status !== "archived") as TeamTarget[]
 
       normalizedTeams.sort((a, b) => getWorkspaceActivityTime(b) - getWorkspaceActivityTime(a))
       return normalizedTeams

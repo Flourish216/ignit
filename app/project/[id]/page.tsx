@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { formatDistanceToNow } from "date-fns"
 import useSWR, { mutate } from "swr"
-import { ArrowLeft, Calendar, CheckCircle2, Clock, Edit3, Loader2, MapPin, MessageCircle, MessageSquare, Send, Trash2, UserRound, XCircle } from "lucide-react"
+import { Archive, ArrowLeft, Calendar, CheckCircle2, Clock, Edit3, Loader2, MapPin, MessageCircle, MessageSquare, Send, UserRound, XCircle } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -69,7 +69,7 @@ export default function SparkDetailPage() {
   const supabase = createClient()
   const [message, setMessage] = useState("")
   const [isSendingInterest, setIsSendingInterest] = useState(false)
-  const [isDeletingSpark, setIsDeletingSpark] = useState(false)
+  const [isArchivingSpark, setIsArchivingSpark] = useState(false)
   const [isOpeningWorkspace, setIsOpeningWorkspace] = useState(false)
   const [isSavingSpark, setIsSavingSpark] = useState(false)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -217,17 +217,25 @@ export default function SparkDetailPage() {
     }
   }
 
-  const handleDeleteSpark = async () => {
+  const handleArchiveSpark = async () => {
     if (!user || !id || !isOwner) return
-    if (!window.confirm("Delete this Spark? This cannot be undone.")) return
+    if (!window.confirm("Archive this Spark? It will disappear from Browse but stay in your account.")) return
 
-    setIsDeletingSpark(true)
+    setIsArchivingSpark(true)
     setErrorMessage(null)
 
     try {
+      const nextBreakdown = {
+        ...((intent.ai_breakdown || {}) as IntentBreakdown),
+        status: "archived",
+      }
+
       const { error } = await supabase
         .from("projects")
-        .delete()
+        .update({
+          status: "archived",
+          ai_breakdown: nextBreakdown,
+        })
         .eq("id", id)
         .eq("owner_id", user.id)
 
@@ -235,9 +243,9 @@ export default function SparkDetailPage() {
 
       router.push("/profile")
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Could not delete Spark")
+      setErrorMessage(error instanceof Error ? error.message : "Could not archive Spark")
     } finally {
-      setIsDeletingSpark(false)
+      setIsArchivingSpark(false)
     }
   }
 
@@ -603,15 +611,15 @@ export default function SparkDetailPage() {
                     <Button
                       className="w-full"
                       variant="outline"
-                      onClick={handleDeleteSpark}
-                      disabled={isDeletingSpark}
+                      onClick={handleArchiveSpark}
+                      disabled={isArchivingSpark}
                     >
-                      {isDeletingSpark ? (
+                      {isArchivingSpark ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
-                        <Trash2 className="mr-2 h-4 w-4" />
+                        <Archive className="mr-2 h-4 w-4" />
                       )}
-                      Delete Spark
+                      Archive Spark
                     </Button>
                     {errorMessage && <p className="text-sm text-destructive">{errorMessage}</p>}
                   </div>

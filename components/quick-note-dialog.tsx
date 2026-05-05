@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import useSWR, { mutate } from "swr"
-import { Check, Edit3, Lightbulb, Loader2, Mic, MicOff, NotebookPen, Plus, Sparkles, Trash2, Wand2, X } from "lucide-react"
+import { Archive, Check, Edit3, Lightbulb, Loader2, Mic, MicOff, NotebookPen, Plus, Sparkles, Wand2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -28,6 +28,7 @@ type QuickNote = {
   content: string
   source: NoteSource
   converted_project_id: string | null
+  archived_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -107,10 +108,18 @@ const getNoteErrorMessage = (error: unknown) => {
     typeof errorObject?.details === "string" ? errorObject.details : null,
   ].filter(Boolean).join(" ")
 
+  if (message.includes("archived_at")) {
+    return "Notes archive is not ready yet. Run the updated scripts/create-notes-table.sql in Supabase."
+  }
   if (message.includes("public.notes") || message.includes("schema cache") || message.includes("PGRST205")) {
     return "Notes storage is not ready yet. Run scripts/create-notes-table.sql in Supabase."
   }
   return message || "Could not save note."
+}
+
+const isMissingArchiveColumn = (error: unknown) => {
+  const message = getNoteErrorMessage(error)
+  return message.includes("Notes archive is not ready yet")
 }
 
 export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnly = false }: QuickNoteDialogProps) {
@@ -145,11 +154,23 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
       if (!user) return []
       const { data, error } = await supabase
         .from("notes")
-        .select("id, user_id, content, source, converted_project_id, created_at, updated_at")
+        .select("id, user_id, content, source, converted_project_id, archived_at, created_at, updated_at")
         .eq("user_id", user.id)
+        .is("archived_at", null)
         .order("created_at", { ascending: false })
         .limit(5)
 
+      if (isMissingArchiveColumn(error)) {
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from("notes")
+          .select("id, user_id, content, source, converted_project_id, created_at, updated_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(5)
+
+        if (fallbackError) throw fallbackError
+        return fallbackData as QuickNote[]
+      }
       if (error) throw error
       return data as QuickNote[]
     },
@@ -267,10 +288,15 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
     }
   }
 
-  const handleDelete = async (noteId: string) => {
-    const { error } = await supabase.from("notes").delete().eq("id", noteId)
+  const handleArchive = async (noteId: string) => {
+    if (!user) return
+    const { error } = await supabase
+      .from("notes")
+      .update({ archived_at: new Date().toISOString() })
+      .eq("id", noteId)
+      .eq("user_id", user.id)
     if (error) {
-      setError(error.message)
+      setError(getNoteErrorMessage(error))
       return
     }
     mutateNotes((current = []) => current.filter((note) => note.id !== noteId), false)
@@ -515,11 +541,11 @@ export function QuickNoteDialog({ compact = false, label = "Quick note", iconOnl
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleDelete(note.id)}
-                              aria-label="Delete note"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                              onClick={() => handleArchive(note.id)}
+                              aria-label="Archive note"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Archive className="h-4 w-4" />
                             </Button>
                           </>
                         )}
