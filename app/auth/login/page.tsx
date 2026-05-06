@@ -21,6 +21,10 @@ function LoginForm() {
   const isZh = language === 'zh'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [otpCode, setOtpCode] = useState('')
+  const [loginMode, setLoginMode] = useState<'code' | 'password'>('code')
+  const [codeSent, setCodeSent] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
@@ -34,6 +38,7 @@ function LoginForm() {
     const supabase = createClient()
     setIsLoading(true)
     setError(null)
+    setNotice(null)
 
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -56,6 +61,63 @@ function LoginForm() {
     }
   }
 
+  const sendLoginCode = async () => {
+    const supabase = createClient()
+    setIsLoading(true)
+    setError(null)
+    setNotice(null)
+
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false,
+        },
+      })
+
+      if (error) throw error
+      setCodeSent(true)
+      setNotice(isZh ? '验证码已发送，去邮箱看一下。' : 'Code sent. Check your email.')
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : ''
+      setError(message || (isZh ? '验证码发送失败，请确认邮箱已注册。' : 'Could not send code. Make sure this email is registered.'))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSendCode = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await sendLoginCode()
+  }
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const supabase = createClient()
+    const token = otpCode.replace(/\s/g, '')
+
+    setIsLoading(true)
+    setError(null)
+    setNotice(null)
+
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'email',
+      })
+
+      if (error) throw error
+      router.push(redirectTo)
+      router.refresh()
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : ''
+      setError(message || (isZh ? '验证码不对或已过期，请重新试一次。' : 'The code is incorrect or expired. Try again.'))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   return (
     <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
       <div className="w-full max-w-sm">
@@ -64,11 +126,113 @@ function LoginForm() {
             <CardHeader>
               <CardTitle className="text-2xl">{isZh ? '登录' : 'Login'}</CardTitle>
               <CardDescription>
-                {isZh ? '登录后就能发布 Spark、回应别人、进入工作区。' : 'Enter your email below to login to your account'}
+                {isZh ? '用邮箱验证码登录，不用记密码。' : 'Log in with an email code. No password needed.'}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleLogin}>
+              <div className="mb-6 grid grid-cols-2 gap-2 rounded-lg bg-secondary p-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginMode('code')
+                    setError(null)
+                    setNotice(null)
+                  }}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    loginMode === 'code'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {isZh ? '验证码' : 'Email code'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginMode('password')
+                    setError(null)
+                    setNotice(null)
+                  }}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    loginMode === 'password'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {isZh ? '密码' : 'Password'}
+                </button>
+              </div>
+
+              {loginMode === 'code' ? (
+                <form onSubmit={codeSent ? handleVerifyCode : handleSendCode}>
+                  <div className="flex flex-col gap-6">
+                    <div className="grid gap-2">
+                      <Label htmlFor="email-code">{isZh ? '邮箱' : 'Email'}</Label>
+                      <Input
+                        id="email-code"
+                        type="email"
+                        placeholder="m@example.com"
+                        required
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value)
+                          setCodeSent(false)
+                          setOtpCode('')
+                        }}
+                      />
+                    </div>
+                    {codeSent && (
+                      <div className="grid gap-2">
+                        <Label htmlFor="otp-code">{isZh ? '验证码' : 'Code'}</Label>
+                        <Input
+                          id="otp-code"
+                          inputMode="numeric"
+                          autoComplete="one-time-code"
+                          placeholder="123456"
+                          required
+                          maxLength={6}
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          className="text-center text-lg tracking-[0.35em]"
+                        />
+                      </div>
+                    )}
+                    {isConfirmed && (
+                      <p className="rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
+                        {isZh ? '邮箱已确认，可以登录了。' : 'Email confirmed. You can log in now.'}
+                      </p>
+                    )}
+                    {authErrorDescription && (
+                      <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                        {isZh ? '确认链接无效或已过期，请重新注册或重新发送确认邮件。' : authErrorDescription}
+                      </p>
+                    )}
+                    {notice && <p className="rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">{notice}</p>}
+                    {error && <p className="text-sm text-red-500">{error}</p>}
+                    <Button type="submit" className="w-full" disabled={isLoading || (codeSent && otpCode.trim().length < 6)}>
+                      {isLoading
+                        ? isZh ? '处理中...' : 'Working...'
+                        : codeSent
+                          ? isZh ? '验证并登录' : 'Verify and log in'
+                          : isZh ? '发送验证码' : 'Send code'}
+                    </Button>
+                    {codeSent && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        className="w-full"
+                        disabled={isLoading}
+                        onClick={() => {
+                          void sendLoginCode()
+                        }}
+                      >
+                        {isZh ? '重新发送验证码' : 'Send code again'}
+                      </Button>
+                    )}
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleLogin}>
                 <div className="flex flex-col gap-6">
                   <div className="grid gap-2">
                     <Label htmlFor="email">{isZh ? '邮箱' : 'Email'}</Label>
@@ -106,16 +270,18 @@ function LoginForm() {
                     {isLoading ? isZh ? '登录中...' : 'Logging in...' : isZh ? '登录' : 'Login'}
                   </Button>
                 </div>
-                <div className="mt-4 text-center text-sm">
-                  {isZh ? '还没有账号？' : 'Don’t have an account?'}{' '}
-                  <Link
-                    href="/auth/sign-up"
-                    className="underline underline-offset-4"
-                  >
-                    {isZh ? '注册' : 'Sign up'}
-                  </Link>
-                </div>
-              </form>
+                </form>
+              )}
+
+              <div className="mt-4 text-center text-sm">
+                {isZh ? '还没有账号？' : 'Don’t have an account?'}{' '}
+                <Link
+                  href="/auth/sign-up"
+                  className="underline underline-offset-4"
+                >
+                  {isZh ? '注册' : 'Sign up'}
+                </Link>
+              </div>
             </CardContent>
           </Card>
         </div>
