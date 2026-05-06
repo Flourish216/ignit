@@ -317,7 +317,9 @@ export default function TeamWorkspacePage() {
   const isZh = language === "zh"
   const teamId = params.id as string
   const supabase = createClient()
+  const messagesScrollRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const repairedWorkspaceRef = useRef<string | null>(null)
 
   const [messageInput, setMessageInput] = useState("")
   const [isSending, setIsSending] = useState(false)
@@ -469,7 +471,12 @@ export default function TeamWorkspacePage() {
   }, [mutateMessages, projectId, supabase])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    const scrollContainer = messagesScrollRef.current
+    if (!scrollContainer) return
+
+    requestAnimationFrame(() => {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight
+    })
   }, [messages])
 
   useEffect(() => {
@@ -524,7 +531,11 @@ export default function TeamWorkspacePage() {
   }
 
   useEffect(() => {
-    if (!user || !team || !isOwner || isRepairingWorkspace) return
+    if (!user || !team || !isOwner) return
+
+    const repairKey = `${teamId}:${user.id}`
+    if (repairedWorkspaceRef.current === repairKey) return
+    repairedWorkspaceRef.current = repairKey
 
     const repairWorkspace = async () => {
       setIsRepairingWorkspace(true)
@@ -554,7 +565,7 @@ export default function TeamWorkspacePage() {
     }
 
     repairWorkspace()
-  }, [isOwner, isRepairingWorkspace, mutateMembers, supabase, team, teamId, user])
+  }, [isOwner, mutateMembers, supabase, team, teamId, user, isZh])
 
   const handleAskIgni = async (question: string, mode: IgniMode = igniMode) => {
     if (!question.trim() || !projectId || !user || !canSendMessage) return
@@ -931,7 +942,7 @@ export default function TeamWorkspacePage() {
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-5">
+            <div ref={messagesScrollRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-5">
               {isMembershipChecking && (
                 <div className="mb-4 rounded-lg border border-dashed border-border bg-secondary/40 p-4 text-center">
                   <p className="text-sm text-muted-foreground">{isZh ? "正在检查工作区权限..." : "Checking workspace access..."}</p>
