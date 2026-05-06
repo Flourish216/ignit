@@ -147,19 +147,6 @@ export function Navigation() {
     </Tooltip>
   )
 
-  const MobileProfileButton = () => (
-    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full p-0" asChild>
-      <Link href="/profile" aria-label={t.nav.profile}>
-        <Avatar className="h-9 w-9">
-          <AvatarImage src={profile?.avatar_url || ""} alt={profile?.full_name || (isZh ? "用户" : "User")} />
-          <AvatarFallback className="bg-primary text-primary-foreground">
-            {getInitial()}
-          </AvatarFallback>
-        </Avatar>
-      </Link>
-    </Button>
-  )
-
   return (
     <>
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-64 flex-col border-r border-border bg-background lg:flex">
@@ -281,7 +268,7 @@ export function Navigation() {
                     <Plus className="h-4 w-4" />
                   </Link>
                 </Button>
-                <MobileProfileButton />
+                <UserMenu />
               </>
             ) : (
               <>
