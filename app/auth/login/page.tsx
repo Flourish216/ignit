@@ -19,6 +19,7 @@ import { useLanguage } from '@/lib/i18n/context'
 function LoginForm() {
   const { language } = useLanguage()
   const isZh = language === 'zh'
+  const codeLength = 8
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [otpCode, setOtpCode] = useState('')
@@ -212,15 +213,15 @@ function LoginForm() {
                             id="otp-code"
                             inputMode="numeric"
                             autoComplete="one-time-code"
-                            aria-label={isZh ? '6 位邮箱验证码' : '6 digit email code'}
+                            aria-label={isZh ? '8 位邮箱验证码' : '8 digit email code'}
                             required
-                            maxLength={6}
+                            maxLength={codeLength}
                             value={otpCode}
-                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, codeLength))}
                             className="absolute inset-0 h-12 w-full cursor-text opacity-0"
                           />
-                          <div className="grid grid-cols-6 gap-2" aria-hidden="true">
-                            {Array.from({ length: 6 }).map((_, index) => (
+                          <div className="grid grid-cols-8 gap-1.5 sm:gap-2" aria-hidden="true">
+                            {Array.from({ length: codeLength }).map((_, index) => (
                               <div
                                 key={index}
                                 className={`flex h-12 items-center justify-center rounded-lg border bg-background text-lg font-semibold ${
@@ -254,7 +255,7 @@ function LoginForm() {
                       disabled={
                         isLoading ||
                         (!codeSent && resendCooldown > 0) ||
-                        (codeSent && otpCode.trim().length < 6)
+                        (codeSent && otpCode.trim().length < codeLength)
                       }
                     >
                       {isLoading
