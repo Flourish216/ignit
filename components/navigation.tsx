@@ -1,7 +1,7 @@
 "use client"
 
 import type { FormEvent } from "react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -21,7 +21,7 @@ import { QuickNoteDialog } from "@/components/quick-note-dialog"
 export function Navigation() {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const { language, t } = useLanguage()
   const isZh = language === "zh"
   const [searchQuery, setSearchQuery] = useState("")

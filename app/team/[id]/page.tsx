@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { formatDistanceToNow } from "date-fns"
@@ -316,7 +316,7 @@ export default function TeamWorkspacePage() {
   const { language } = useLanguage()
   const isZh = language === "zh"
   const teamId = params.id as string
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const messagesScrollRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const repairedWorkspaceRef = useRef<string | null>(null)
@@ -366,6 +366,10 @@ export default function TeamWorkspacePage() {
         project: firstRelation(row.project),
       } as WorkspaceTeam
     },
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
   )
 
   const ownerId = team?.project?.owner_id
@@ -381,6 +385,10 @@ export default function TeamWorkspacePage() {
 
       if (error) return null
       return data as Profile
+    },
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
     },
   )
 
@@ -405,6 +413,10 @@ export default function TeamWorkspacePage() {
         ...member,
         user: firstRelation(member.user),
       }))
+    },
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
     },
   )
 
@@ -443,6 +455,11 @@ export default function TeamWorkspacePage() {
         ...message,
         user: profilesById.get(message.user_id) || null,
       }))
+    },
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+      dedupingInterval: 1500,
     },
   )
 
