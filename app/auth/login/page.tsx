@@ -26,6 +26,8 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect') || '/explore'
+  const isConfirmed = searchParams.get('confirmed') === '1'
+  const authErrorDescription = searchParams.get('error_description')
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,7 +43,14 @@ function LoginForm() {
       if (error) throw error
       router.push(redirectTo)
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : isZh ? '登录失败，请再试一次。' : 'An error occurred')
+      const message = error instanceof Error ? error.message : ''
+      const normalizedMessage = message.toLowerCase()
+
+      if (normalizedMessage.includes('email not confirmed') || normalizedMessage.includes('not confirmed')) {
+        setError(isZh ? '邮箱还没确认。请先打开确认邮件，再回来登录。' : 'Please confirm your email before logging in.')
+      } else {
+        setError(message || (isZh ? '登录失败，请再试一次。' : 'An error occurred'))
+      }
     } finally {
       setIsLoading(false)
     }
@@ -82,6 +91,16 @@ function LoginForm() {
                       onChange={(e) => setPassword(e.target.value)}
                     />
                   </div>
+                  {isConfirmed && (
+                    <p className="rounded-md bg-primary/10 px-3 py-2 text-sm text-primary">
+                      {isZh ? '邮箱已确认，可以登录了。' : 'Email confirmed. You can log in now.'}
+                    </p>
+                  )}
+                  {authErrorDescription && (
+                    <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                      {isZh ? '确认链接无效或已过期，请重新注册或重新发送确认邮件。' : authErrorDescription}
+                    </p>
+                  )}
                   {error && <p className="text-sm text-red-500">{error}</p>}
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? isZh ? '登录中...' : 'Logging in...' : isZh ? '登录' : 'Login'}
