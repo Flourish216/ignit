@@ -91,7 +91,7 @@ export function Navigation() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align={align} className="w-56">
+      <DropdownMenuContent align={align} className="w-56 data-[state=closed]:animate-none data-[state=closed]:zoom-out-100">
         <div className="flex items-center gap-2 p-2">
           <Avatar className="h-8 w-8">
             <AvatarImage src={profile?.avatar_url || ""} />
@@ -105,17 +105,25 @@ export function Navigation() {
           </div>
         </div>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/profile" className="cursor-pointer">
-            <User className="mr-2 h-4 w-4" />
-            {t.nav.profile}
-          </Link>
+        <DropdownMenuItem
+          onSelect={(event) => {
+            event.preventDefault()
+            router.push("/profile")
+          }}
+          className="cursor-pointer"
+        >
+          <User className="mr-2 h-4 w-4" />
+          {t.nav.profile}
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/teams" className="cursor-pointer">
-            <Users className="mr-2 h-4 w-4" />
-            {t.nav.myTeams}
-          </Link>
+        <DropdownMenuItem
+          onSelect={(event) => {
+            event.preventDefault()
+            router.push("/teams")
+          }}
+          className="cursor-pointer"
+        >
+          <Users className="mr-2 h-4 w-4" />
+          {t.nav.myTeams}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-destructive">
