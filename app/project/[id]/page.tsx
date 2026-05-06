@@ -246,19 +246,26 @@ export default function SparkDetailPage() {
     setIsSendingInterest(true)
     setErrorMessage(null)
     try {
-      const { data, error } = await supabase
-        .from("project_applications")
-        .insert({
-          project_id: id,
-          user_id: user.id,
-          role_applied: "Interested",
+      const response = await fetch("/api/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: id,
           message: message.trim() || null,
-        })
-        .select("*")
-        .single()
+        }),
+      })
 
-      if (error) throw error
-      mutate(["intent-interest", id, user.id], data, { revalidate: false })
+      const responseText = await response.text()
+      const data = responseText ? (() => {
+        try {
+          return JSON.parse(responseText)
+        } catch {
+          return {}
+        }
+      })() : {}
+      if (!response.ok) throw new Error(data.error || responseText)
+
+      mutate(["intent-interest", id, user.id], data.application, { revalidate: false })
       setMessage("")
       setIsDialogOpen(false)
     } catch (error) {
