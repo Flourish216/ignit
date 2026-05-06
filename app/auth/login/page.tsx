@@ -207,17 +207,33 @@ function LoginForm() {
                     {codeSent && (
                       <div className="grid gap-2">
                         <Label htmlFor="otp-code">{isZh ? '验证码' : 'Code'}</Label>
-                        <Input
-                          id="otp-code"
-                          inputMode="numeric"
-                          autoComplete="one-time-code"
-                          placeholder="123456"
-                          required
-                          maxLength={6}
-                          value={otpCode}
-                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                          className="text-center text-lg tracking-[0.35em]"
-                        />
+                        <div className="relative">
+                          <Input
+                            id="otp-code"
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            aria-label={isZh ? '6 位邮箱验证码' : '6 digit email code'}
+                            required
+                            maxLength={6}
+                            value={otpCode}
+                            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            className="absolute inset-0 h-12 w-full cursor-text opacity-0"
+                          />
+                          <div className="grid grid-cols-6 gap-2" aria-hidden="true">
+                            {Array.from({ length: 6 }).map((_, index) => (
+                              <div
+                                key={index}
+                                className={`flex h-12 items-center justify-center rounded-lg border bg-background text-lg font-semibold ${
+                                  otpCode.length === index
+                                    ? 'border-primary ring-2 ring-primary/20'
+                                    : 'border-input'
+                                }`}
+                              >
+                                {otpCode[index] || ''}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     )}
                     {isConfirmed && (
